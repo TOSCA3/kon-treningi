@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Treningi przed kolokwiami</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#fff,#111418);--panel:light-dark(#f3f5f7,#1a1f25);--line:light-dark(#d8dde3,#2c333b);--ink:light-dark(#14202b,#e9edf1);--mute:light-dark(#5d6873,#9aa5b0)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Manrope,system-ui,sans-serif}
+.wrap{max-width:880px;margin:0 auto;padding:48px max(4vw,16px) 64px}
+h1{font-size:clamp(30px,5vw,44px);line-height:1.08;margin:0 0 10px;font-weight:800;text-wrap:balance}
+.lead{color:var(--mute);margin:0 0 32px;max-width:60ch}
+.list{display:grid;gap:14px}
+.card{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:16px;align-items:center;border:2px solid var(--line);border-radius:16px;padding:16px 18px 16px 0;text-decoration:none;color:inherit;background:var(--bg);overflow:hidden}
+.card:hover,.card:focus-visible{border-color:var(--ink);outline:none}
+.card .bar{align-self:stretch}
+.card h2{margin:0 0 4px;font-size:20px}
+.card p{margin:0;color:var(--mute);font-size:15px}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.meta span{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--panel)}
+.go{font-weight:800;white-space:nowrap}
+footer{margin-top:40px;color:var(--mute);font-size:14px}
+@media(max-width:520px){.card{grid-template-columns:6px minmax(0,1fr)}.go{display:none}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Treningi przed kolokwiami</h1>
+  <p class="lead">Interaktywne treningi do nauki we dwóch albo w pojedynkę: lekcje, dopasowywanie, sortowanie, przypadki kliniczne i zadania pisemne jak na kolokwium. Odpowiedzi oparte na sile dowodów, a nie na studenckich kluczach.</p>
+  <div class="list" id="list"></div>
+  <footer>Postęp zapisuje się w Twojej przeglądarce. Materiały pomocnicze do nauki, nie zastępują podręcznika ani zajęć.</footer>
+</main>
+<script>
+// Spis treningów: najnowsze na górze. Dodając trening, dopisz obiekt na początku tablicy.
+const TRAININGS = [
+  { href: 'kon4-witaminy/', title: 'KON 4: witaminy i pierwiastki', desc: 'Pytania 1–5, 10 i 23: anemia, kości, układ nerwowy, skóra, krzepnięcie, ciąża, weganie.', tags: ['150 zadań', 'jak na kolokwium', 'słowniczek pojęć', '2 graczy'], col: '#c62828', date: 'listopad 2026' },
+];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+document.getElementById('list').innerHTML = TRAININGS.map(t => `<a class="card" href="${esc(t.href)}"><span class="bar" style="background:${esc(t.col)}"></span><div><h2>${esc(t.title)}</h2><p>${esc(t.desc)}</p><div class="meta">${t.tags.map(x => `<span>${esc(x)}</span>`).join('')}<span>${esc(t.date)}</span></div></div><span class="go">Otwórz →</span></a>`).join('');
+</script>
+</body>
+</html>

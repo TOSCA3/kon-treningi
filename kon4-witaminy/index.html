@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KON 4: kreatywny quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: energiczny trening przed kolokwium, rzeczowy, ale z grywalizacją
+   IDEA: kafelki pierwiastków jak z układu okresowego, czyli witaminy i pierwiastki jako "żetony" do układania
+   PICTURE: plansza zadania z kafelkami, pasek postępu i tablica wyników graczy
+   COLOUR and TYPE: biel/grafit, kolor przewodni tematu, zieleń/czerwień tylko dla oceny; Manrope
+   LAYOUT: pasek górny, jedna kolumna zadania, panel informacji zwrotnej pod spodem */
+:root{color-scheme:light dark;--bg:light-dark(#fff,#111418);--panel:light-dark(#f3f5f7,#1a1f25);--line:light-dark(#d8dde3,#2c333b);--ink:light-dark(#14202b,#e9edf1);--mute:light-dark(#5d6873,#9aa5b0);
+--ok:light-dark(#1b8a4c,#4ccb84);--oks:light-dark(#e3f6eb,#11331f);--bad:light-dark(#c62828,#f26d6d);--bads:light-dark(#fde7e7,#3a1616);--warn:light-dark(#b7791f,#f0b44c);--warns:light-dark(#fff4dc,#3a2c10);
+--p1:light-dark(#1f6fd1,#5aa2f5);--p2:light-dark(#d4561c,#f08a55);--acc:#c62828}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Manrope,system-ui,sans-serif;overflow-x:clip}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--p1);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto;padding:0 max(4vw,14px)}
+h1{font-size:clamp(30px,5vw,46px);line-height:1.05;margin:0 0 12px;font-weight:800;text-wrap:balance}
+h2{font-size:22px;margin:0 0 10px}
+.mute{color:var(--mute)}
+.btn{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:10px 18px;min-height:44px;font-weight:700}
+.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+/* start */
+.hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:36px;padding:36px 0 50px;align-items:start}
+.tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.tile{aspect-ratio:1;border-radius:10px;border:2px solid var(--line);background:var(--panel);display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4px}
+.tile b{font-size:clamp(18px,3vw,26px);line-height:1}.tile small{font-size:11px;color:var(--mute);text-align:center;line-height:1.1;margin-top:3px}
+.tile.v{border-color:#e0a106}.tile.m{border-color:#0f8a8a}
+.field{margin-bottom:16px}.field>label,.field>.lab{display:block;font-weight:800;margin-bottom:6px}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button,.chip{border:2px solid var(--line);background:var(--bg);border-radius:999px;padding:7px 14px;min-height:42px;font-weight:700;font-size:14px}
+.seg button[aria-pressed=true],.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+input[type=text]{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);width:100%;min-height:44px}
+.names{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* top */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-block:10px}
+.bar{flex:1 1 160px;height:8px;border-radius:99px;background:var(--panel);overflow:hidden}.bar i{display:block;height:100%;background:var(--acc);width:0;transition:width .3s}
+.pl{font-weight:800;font-size:14px;padding:4px 10px;border-radius:999px;border:2px solid var(--line);white-space:nowrap}
+.pl.on{color:#fff}.pl.p1.on{background:var(--p1);border-color:var(--p1)}.pl.p2.on{background:var(--p2);border-color:var(--p2)}
+/* task */
+.task{padding-top:26px;padding-bottom:70px}
+.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.tag{font-size:13px;font-weight:800;border-radius:999px;padding:3px 10px;color:#fff}
+.type{font-size:13px;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--panel)}
+.turn{font-size:14px;font-weight:800}
+.q{font-size:clamp(18px,2.4vw,22px);font-weight:600;line-height:1.4;margin:0 0 18px}
+.opts{display:grid;gap:10px}
+.opt{text-align:left;border:2px solid var(--line);border-radius:14px;padding:12px 16px;background:var(--bg);min-height:50px;font-weight:600;display:flex;gap:12px;align-items:center}
+.opt .L{flex:none;width:30px;height:30px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-weight:800}
+.opt.sel{border-color:var(--ink)}.opt.good{border-color:var(--ok);background:var(--oks)}.opt.wrong{border-color:var(--bad);background:var(--bads)}
+.tf{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tf .opt{justify-content:center;font-size:20px;min-height:70px}
+/* match */
+.mgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px 18px}
+.mcol{display:grid;gap:8px;align-content:start}
+.mi{border:2px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg);text-align:left;font-weight:600;min-height:46px;position:relative}
+.mi.left{font-weight:800}
+.mi.act{border-color:var(--ink);box-shadow:0 0 0 3px var(--panel)}
+.mi .badge{position:absolute;top:-9px;right:-6px;min-width:24px;height:24px;border-radius:12px;color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;padding:0 6px}
+.mi.good{border-color:var(--ok);background:var(--oks)}.mi.wrong{border-color:var(--bad);background:var(--bads)}
+/* sort */
+.pool{display:flex;flex-wrap:wrap;gap:8px;min-height:56px;padding:10px;border:2px dashed var(--line);border-radius:14px;margin-bottom:12px}
+.tok{border:2px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--panel);font-weight:800;min-height:42px}
+.tok.act{border-color:var(--ink);background:var(--bg);box-shadow:0 0 0 3px var(--panel)}
+.tok.good{border-color:var(--ok);background:var(--oks)}.tok.wrong{border-color:var(--bad);background:var(--bads)}
+.buckets{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.bucket{border:2px solid var(--line);border-radius:14px;padding:10px;min-height:110px;background:var(--bg);text-align:left;display:flex;flex-direction:column;gap:8px}
+.bucket h4{margin:0;font-size:14px;text-transform:none}
+.bucket .in{display:flex;flex-wrap:wrap;gap:6px}
+.bucket.hot{border-color:var(--ink);border-style:dashed}
+/* order */
+.olist{display:grid;gap:8px;counter-reset:o}
+.oit{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;border:2px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--bg)}
+.oit .n{width:30px;height:30px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-weight:800}
+.oit .mv{display:flex;gap:4px}.oit .mv button{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-weight:800}
+.oit.good{border-color:var(--ok);background:var(--oks)}.oit.wrong{border-color:var(--bad);background:var(--bads)}
+/* recall */
+textarea{width:100%;min-height:110px;font:inherit;font-size:16px;padding:12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+.rtoks{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.rt{border-radius:8px;padding:4px 10px;font-weight:800;font-size:14px;border:2px solid}
+.rt.g{border-color:var(--ok);background:var(--oks)}.rt.w{border-color:var(--warn);background:var(--warns)}.rt.b{border-color:var(--bad);background:var(--bads)}.rt.m{border-color:var(--line);background:var(--panel);color:var(--mute)}
+/* feedback */
+.fb{margin-top:18px;border-radius:14px;padding:14px 16px;border:2px solid var(--line);font-size:16px}
+.fb.ok{border-color:var(--ok);background:var(--oks)}.fb.bad{border-color:var(--bad);background:light-dark(#fff8f8,#1f1414)}.fb.part{border-color:var(--warn);background:var(--warns)}
+.fb .v{font-size:19px;font-weight:800;margin:0 0 6px}
+.actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.hint{font-size:14px;color:var(--mute);margin:-8px 0 14px}
+/* end */
+.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:16px 0 24px}
+.sc{border:2px solid var(--line);border-radius:16px;padding:18px}.sc .big{font-size:clamp(40px,7vw,58px);font-weight:800;line-height:1}
+.sc.p1{border-color:var(--p1)}.sc.p2{border-color:var(--p2)}
+.trow{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) 70px;gap:10px;align-items:center;font-size:14px;margin-bottom:8px}
+.tbar{height:12px;border-radius:99px;background:var(--panel);overflow:hidden}.tbar i{display:block;height:100%}
+.v2{text-align:right;font-variant-numeric:tabular-nums}
+.wl{border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:8px;font-size:15px}
+[hidden]{display:none!important}
+@media(max-width:760px){.hero{grid-template-columns:minmax(0,1fr)}.mgrid{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:8px 10px}.mi{font-size:14px;padding:8px}}
+@media(max-width:520px){.names{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}.tiles .tile:nth-child(n+9){display:none}.trow{grid-template-columns:minmax(0,1fr) 60px}.trow .tbar{grid-column:1/-1;order:3}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+/* v2: edukacyjna informacja zwrotna */
+.fb .sec{margin:12px 0 0}
+.fb h5{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px}
+.bd{display:grid;gap:6px}
+.bd .it{display:grid;grid-template-columns:26px minmax(0,1fr);gap:8px;align-items:start;padding:8px 10px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-size:15px}
+.bd .it .ic{font-weight:800;text-align:center}
+.bd .it.g{border-color:var(--ok)}.bd .it.g .ic{color:var(--ok)}
+.bd .it.b{border-color:var(--bad)}.bd .it.b .ic{color:var(--bad)}
+.bd .it.w{border-color:var(--warn)}.bd .it.w .ic{color:var(--warn)}
+.bd .it.m{opacity:.85}.bd .it.m .ic{color:var(--mute)}
+.bd .it .h{font-weight:800}
+.bd .it .s{color:var(--mute);font-size:14px;display:block;margin-top:2px}
+.bd .it .y{font-size:12px;font-weight:800;border-radius:6px;padding:1px 6px;margin-left:6px;background:var(--panel)}
+.mem{margin-top:14px;border-left:5px solid var(--acc);background:var(--panel);border-radius:10px;padding:10px 14px;font-size:16px}
+.mem b:first-child{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:3px}
+.exbox{margin-top:10px;font-size:16px}
+.hintbox{border:2px dashed var(--warn);background:var(--warns);border-radius:12px;padding:10px 14px;margin:0 0 14px;font-size:15px}
+.need{display:inline-block;font-weight:800;font-size:13px;border-radius:999px;padding:3px 10px;background:var(--panel);margin-bottom:10px}
+.btn.ghost{background:transparent;border-style:dashed}
+
+.gl{border:1px solid var(--line);border-radius:10px;background:var(--bg);margin-bottom:6px}
+.gl summary{cursor:pointer;padding:9px 12px;font-weight:800;font-size:15px;list-style:none;display:flex;gap:8px;align-items:center}
+.gl summary::-webkit-details-marker{display:none}
+.gl summary::before{content:'+';display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--panel);font-weight:800;flex:none}
+.gl[open] summary::before{content:'–'}
+.gl>div{padding:0 14px 12px 42px;font-size:15px;line-height:1.6}
+
+.kcard{border:2px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px;background:var(--bg)}
+.kh{display:flex;align-items:center;gap:8px;font-weight:800;margin-bottom:8px}
+.kn{width:28px;height:28px;border-radius:50%;background:var(--acc);color:#fff;display:grid;place-items:center;font-weight:800;flex:none}
+.krow{display:flex;gap:8px;flex-wrap:wrap}.krow input{flex:1 1 200px}
+.kmsg{margin-top:8px;font-size:15px;border-radius:10px;padding:8px 12px;background:var(--warns);border:1px solid var(--warn)}
+.ktxt{min-height:90px}
+.kyour{font-size:15px;padding:8px 12px;border-radius:10px;background:var(--panel);margin-bottom:8px;white-space:pre-wrap}
+.kmodel{font-size:16px;padding:10px 12px;border-radius:10px;border:2px solid var(--ok);background:var(--oks);margin-bottom:8px}
+.kkw{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:14px}
+.rates{display:flex;gap:8px;flex-wrap:wrap}
+.btn.rate.sug{border:2px solid var(--ink);box-shadow:0 0 0 3px var(--panel)}
+.btn.rate small{font-weight:600;color:var(--mute)}
+.kdone{margin:4px 0 0;font-size:15px}
+</style>
+</head>
+<body>
+
+<section id="vStart" class="wrap">
+  <div class="hero">
+    <div>
+      <h1>KON 4: kreatywny trening przed kolokwium</h1>
+      <p class="mute" id="lead"></p>
+      <div class="tiles" id="tiles" aria-hidden="true"></div>
+      <p class="mute" style="font-size:14px;margin-top:14px">Treść oparta na sile dowodów, a nie na studenckim kluczu. Składniki ze słabymi dowodami są oznaczone. Utknąłeś? Użyj „Podpowiedzi” albo „Nie wiem, pokaż”: od razu dostaniesz pełne wyjaśnienie.</p>
+    </div>
+    <div>
+      <div class="field"><span class="lab">Tryb</span>
+        <div class="seg" id="modeSeg"><button data-m="2" aria-pressed="true">2 graczy na zmianę</button><button data-m="1" aria-pressed="false">1 gracz</button></div></div>
+      <div class="field"><label for="n1">Gracze</label>
+        <div class="names"><input type="text" id="n1" value="Artur" aria-label="Gracz 1"><input type="text" id="n2" value="Andrzej" aria-label="Gracz 2"></div></div>
+      <div class="field"><span class="lab">Pytania z kolokwium</span><div class="seg" id="topics"></div></div>
+      <div class="field"><span class="lab">Rodzaje zadań</span><div class="seg" id="types"></div></div>
+      <div class="field"><span class="lab">Ile zadań</span>
+        <div class="seg" id="nSeg"><button data-n="20" aria-pressed="false">20</button><button data-n="40" aria-pressed="false">40</button><button data-n="999" aria-pressed="true">wszystkie</button></div></div>
+      <div class="row"><button class="btn pri" id="go">Start</button><button class="btn" id="resume" hidden>Wznów</button></div>
+      <p class="mute" id="count" style="font-size:14px"></p>
+    </div>
+  </div>
+</section>
+
+<div id="vTask" hidden>
+  <div class="top"><div class="wrap">
+    <span class="pl p1" id="s1"></span><span class="pl p2" id="s2"></span>
+    <div class="bar"><i id="barI"></i></div>
+    <span class="mute" id="pos" style="font-weight:700;font-size:14px"></span>
+    <button class="btn" id="quit">Zakończ</button>
+  </div></div>
+  <div class="wrap task">
+    <div class="meta" id="meta"></div>
+    <p class="q" id="q"></p>
+    <div id="body"></div>
+    <div id="fb"></div>
+    <div class="actions"><button class="btn pri" id="check">Sprawdź</button><button class="btn" id="hintBtn" hidden>Podpowiedź</button><button class="btn ghost" id="giveup">Nie wiem, pokaż</button><button class="btn pri" id="next" hidden>Dalej →</button></div>
+  </div>
+</div>
+
+<section id="vEnd" class="wrap" style="padding-top:30px;padding-bottom:60px" hidden>
+  <h1>Wynik</h1>
+  <div class="scores" id="scores"></div>
+  <h2>Tematy, od najsłabszego</h2>
+  <div id="topicRows"></div>
+  <div class="actions" id="endActions"></div>
+  <h2 style="margin-top:26px">Zadania do poprawy</h2>
+  <div id="wrongList"></div>
+</section>
+
+<script>
+{
+const TOPICS = {
+  A: { name: 'Anemia', q: 'pyt. 1', col: '#c62828' },
+  K: { name: 'Kości', q: 'pyt. 2', col: '#6d4c41' },
+  N: { name: 'Układ nerwowy', q: 'pyt. 3', col: '#5e35b1' },
+  S: { name: 'Skóra', q: 'pyt. 4', col: '#ef6c00' },
+  H: { name: 'Krzepnięcie', q: 'pyt. 5', col: '#ad1457' },
+  P: { name: 'Ciąża', q: 'pyt. 10', col: '#00897b' },
+  W: { name: 'Weganie', q: 'pyt. 23', col: '#2e7d32' },
+};
+
+const COMP = {
+  B1: ['B1', 'tiamina'], B2: ['B2', 'ryboflawina'], PP: ['PP', 'niacyna, B3'], B5: ['B5', 'kwas pantotenowy'], B6: ['B6', 'pirydoksyna'],
+  H: ['H', 'biotyna, B7'], B9: ['B9', 'foliany'], B12: ['B12', 'kobalamina'], A: ['wit. A', 'retinol'], D: ['wit. D', 'kalcyferol'], E: ['wit. E', 'tokoferol'],
+  K: ['wit. K', 'filochinon'], C: ['wit. C', 'askorbinian'], Ca: ['Ca', 'wapń'], Mg: ['Mg', 'magnez'], P: ['P', 'fosfor'], F: ['F', 'fluor'], Fe: ['Fe', 'żelazo'],
+  Cu: ['Cu', 'miedź'], Zn: ['Zn', 'cynk'], I: ['I', 'jod'], Se: ['Se', 'selen'], Mn: ['Mn', 'mangan'], Si: ['Si', 'krzem'], Bo: ['B', 'bor'],
+};
+const ALIAS = {
+  B1: ['b1', 'tiamina', 'aneuryna'], B2: ['b2', 'ryboflawina'], PP: ['pp', 'b3', 'niacyna', 'kwas nikotynowy', 'nikotynamid'],
+  B5: ['b5', 'kwas pantotenowy', 'pantotenowy', 'pantotenian'], B6: ['b6', 'pirydoksyna', 'plp'], H: ['h', 'b7', 'biotyna'],
+  B9: ['b9', 'foliany', 'folian', 'kwas foliowy', 'folacyna', 'folany'], B12: ['b12', 'kobalamina', 'cyjanokobalamina'], A: ['a', 'retinol', 'retinoidy'],
+  D: ['d', 'kalcyferol', 'cholekalcyferol', 'd3', 'kalcytriol'], E: ['e', 'tokoferol'], K: ['k', 'filochinon', 'menachinon'], C: ['c', 'kwas askorbinowy', 'askorbinian'],
+  Ca: ['ca', 'wapn'], Mg: ['mg', 'magnez'], P: ['p', 'fosfor', 'fosforany', 'fosforan'], F: ['f', 'fluor', 'fluorki'], Fe: ['fe', 'zelazo'],
+  Cu: ['cu', 'miedz'], Zn: ['zn', 'cynk'], I: ['i', 'jod'], Se: ['se', 'selen'], Mn: ['mn', 'mangan'], Si: ['si', 'krzem'], Bo: ['bor'],
+};
+const NOTE_FE_EXCLUDED = { Fe: 'Żelazo jest oczywiste i polecenie kazało je pominąć, więc nie dostajesz za nie punktu (ale też nie tracisz).' };
+
+const TASKS = [
+// ===================== ANEMIA (pyt. 1) =====================
+{ t: 'recall', tp: 'A', need: 6,
+  q: 'Żelazo jest oczywiste, ale co jeszcze? Wpisz <b>witaminy i pierwiastki (inne niż żelazo)</b>, których <b>niedobór</b> może wywołać <b>niedokrwistość</b>. Potrzebujesz co najmniej <b>6</b>.',
+  hint: 'Pomyśl, czego potrzebuje erytroblast, żeby zrobić krwinkę: (1) DNA do podziałów, (2) hem, (3) żelazo, które musi się wchłonąć i dotrzeć do szpiku, (4) błona, która nie pęknie.',
+  ok: ['B12', 'B9', 'B6', 'Cu', 'C', 'E', 'A', 'B2', 'Zn'], weak: ['B5', 'PP', 'H'], neutral: NOTE_FE_EXCLUDED,
+  tab: {
+    B12: '<b>DNA.</b> Kofaktor syntazy metioniny. Bez niej folian zostaje uwięziony jako 5-metylo-THF (tetrahydrofolian), brakuje tymidyny i erytroblasty nie mogą się dzielić → <b>anemia megaloblastyczna + objawy neurologiczne</b>.',
+    B9: '<b>DNA.</b> 5,10-metyleno-THF dostarcza węgiel do syntezy tymidylanu (dUMP → dTMP) → <b>anemia megaloblastyczna bez objawów neurologicznych</b>.',
+    B6: '<b>HEM.</b> PLP (fosforan pirydoksalu) jest kofaktorem syntazy ALA (kwasu δ-aminolewulinowego), pierwszego enzymu syntezy hemu → <b>anemia mikrocytowa syderoblastyczna</b>.',
+    B2: '<b>HEM / ŻELAZO.</b> FAD (dinukleotyd flawinoadeninowy) działa w oksydazie protoporfirynogenu i pomaga uwalniać żelazo z ferrytyny → <b>anemia normocytowa</b> (dowody umiarkowane).',
+    Zn: '<b>HEM.</b> Cynk jest w ALAD (dehydratazie kwasu δ-aminolewulinowego). Ważniejszy klinicznie jest jednak NADMIAR cynku, bo wywołuje niedobór miedzi. Dowody umiarkowane.',
+    Cu: '<b>ŻELAZO.</b> Ferroksydazy (ceruloplazmina w osoczu, hefajstyna w enterocycie) utleniają Fe²⁺ do Fe³⁺. Tylko Fe³⁺ wiąże się z transferyną → <b>anemia oporna na żelazo + neutropenia</b>.',
+    C: '<b>ŻELAZO.</b> Redukuje Fe³⁺ do Fe²⁺ w świetle jelita, a DMT1 (transporter metali dwuwartościowych 1) przenosi tylko Fe²⁺ → gorsze wchłanianie żelaza z roślin. W szkorbucie dochodzi utrata krwi z krwawień.',
+    A: '<b>ŻELAZO.</b> Kwas retinowy jest potrzebny, żeby żelazo z zapasów (ferrytyna) trafiło do szpiku → anemia z niskim żelazem w surowicy mimo zapasów. Ustępuje po podaniu wit. A.',
+    E: '<b>BŁONA.</b> Antyoksydant błon chroni lipidy błony erytrocytu przed peroksydacją → <b>anemia hemolityczna</b> (typowo wcześniaki, zaburzenia wchłaniania tłuszczów).',
+    B5: 'Słabe dowody. CoA (koenzym A) tworzy sukcynylo-CoA, czyli substrat syntezy hemu. Biochemicznie to ma sens, ale u ludzi brak dobrych danych klinicznych.',
+    PP: 'Słabe dowody. NAD (dinukleotyd nikotynamidoadeninowy) działa w całym metabolizmie, ale anemia nie jest typowym objawem pelagry.',
+    H: 'Słabe dowody. Biotyna nie ma udokumentowanej roli w anemii u ludzi.',
+  },
+  ex: 'Zamiast wkuwać listę, odtwórz ją z 4 dróg, czyli z tego, czego potrzebuje erytroblast.',
+  mem: '<b>4 drogi do anemii:</b> DNA (B12, B9) · HEM (B6, B2, Zn) · ŻELAZO (Cu, C, A) · BŁONA (E).' },
+
+{ t: 'match', tp: 'A', q: 'Co się stanie z krwinkami? Dopasuj <b>niedobór składnika</b> (lewa kolumna) do <b>typu niedokrwistości</b>, jaki wywołuje (prawa kolumna).',
+  pairs: [
+    ['niedobór B12', 'megaloblastyczna + objawy neurologiczne', 'B12 działa w dwóch enzymach: syntazie metioniny (DNA → megaloblasty) i mutazie metylomalonylo-CoA (mielina → neuropatia, SCD, czyli podostre złożone zwyrodnienie rdzenia).'],
+    ['niedobór kwasu foliowego (B9)', 'megaloblastyczna bez objawów neurologicznych', 'Foliany działają tylko w syntezie nukleotydów, a w mielinie nie, więc jest sama anemia.'],
+    ['niedobór B6', 'mikrocytowa syderoblastyczna', 'Bez PLP (fosforanu pirydoksalu) nie powstaje ALA, więc brakuje protoporfiryny. Żelazo nie ma się gdzie wbudować i odkłada się w mitochondriach wokół jądra erytroblastu: to syderoblasty pierścieniowe.'],
+    ['niedobór wit. E', 'hemolityczna', 'Wolne rodniki utleniają lipidy błony, erytrocyt staje się kruchy i pęka.'],
+    ['niedobór B2', 'normocytowa', 'Szpik „zwalnia” (gorsza mobilizacja żelaza), ale DNA i hem działają, więc krwinki mają normalną wielkość.'],
+    ['niedobór Cu', 'oporna na leczenie żelazem + neutropenia', 'Żelazo jest w zapasach, ale bez ferroksydaz nie może z nich wyjść. Dlatego podawanie żelaza nie pomaga.'],
+  ],
+  ex: 'Wielkość krwinki zdradza mechanizm: zaburzone DNA → jądro nie nadąża za cytoplazmą → duże komórki. Zaburzony hem → mało hemoglobiny → małe, blade komórki. Zaburzona błona → rozpad.',
+  mem: '<b>DUŻA krwinka = DNA</b> (B12, B9) · <b>MAŁA = HEM / Fe</b> (B6, Fe, Cu) · <b>ROZPAD = BŁONA</b> (E).' },
+
+{ t: 'match', tp: 'A', q: 'Przez jaki enzym lub białko działa składnik? Dopasuj <b>składnik</b> do <b>enzymu albo procesu</b> w erytropoezie.',
+  pairs: [
+    ['B6', 'syntaza ALA (kwasu δ-aminolewulinowego)', 'Pierwszy i limitujący etap syntezy hemu, w mitochondrium. PLP jest jej kofaktorem.'],
+    ['Zn', 'ALAD (dehydrataza kwasu δ-aminolewulinowego)', 'Łączy 2 cząsteczki ALA w porfobilinogen. Ołów wypiera z niej cynk, dlatego zatrucie ołowiem daje anemię.'],
+    ['Cu', 'ceruloplazmina i hefajstyna (ferroksydazy)', 'Utleniają Fe²⁺ do Fe³⁺. Tylko Fe³⁺ wiąże się z transferyną i jedzie do szpiku.'],
+    ['wit. C', 'redukcja Fe³⁺ → Fe²⁺ w świetle jelita', 'DMT1 (transporter metali dwuwartościowych 1) przenosi przez błonę enterocytu tylko Fe²⁺.'],
+    ['B12', 'syntaza metioniny', 'Przenosi grupę metylową z 5-metylo-THF na homocysteinę, przez co uwalnia THF do syntezy DNA.'],
+    ['B9', 'syntaza tymidylanowa (jako 5,10-metyleno-THF)', 'Dostarcza węgiel do zamiany dUMP → dTMP (tymidylan). Bez tymidylanu nie ma DNA.'],
+  ],
+  ex: 'Każdy składnik ma swoje „stanowisko pracy”. Jeśli znasz enzym, sam wydedukujesz typ anemii.',
+  mem: '<b>B6, Zn → hem · Cu, C → żelazo · B12, B9 → DNA.</b> Kierunki żelaza: wit. C redukuje (Fe³⁺ → Fe²⁺, wejście do enterocytu), Cu utlenia (Fe²⁺ → Fe³⁺, wyjście do krwi).' },
+
+{ t: 'sort', tp: 'A', q: 'Rozłóż składniki do <b>4 dróg</b>, którymi ich niedobór prowadzi do anemii.', buckets: ['DNA (synteza nukleotydów)', 'HEM (synteza hemu)', 'ŻELAZO (wchłanianie, transport, mobilizacja)', 'BŁONA (ochrona erytrocytu)'],
+  items: [
+    ['B12', 0, 'syntaza metioniny uwalnia THF do syntezy DNA'], ['B9', 0, 'synteza tymidylanu'], ['B6', 1, 'syntaza ALA'], ['Zn', 1, 'ALAD (dehydrataza ALA)'],
+    ['B2', [1, 2], 'FAD w oksydazie protoporfirynogenu (hem) i w uwalnianiu żelaza z ferrytyny, więc zaliczam obie odpowiedzi'],
+    ['Cu', 2, 'ferroksydazy (ceruloplazmina, hefajstyna)'], ['wit. C', 2, 'redukcja Fe³⁺ → Fe²⁺ do wchłonięcia'], ['wit. A', 2, 'mobilizacja żelaza z zapasów'], ['wit. E', 3, 'antyoksydant błony'],
+  ],
+  ex: 'Na kolokwium taka klasyfikacja to gotowy szkielet odpowiedzi: wymieniasz drogę, składnik, enzym i typ anemii.',
+  mem: '<b>DNA:</b> B12, B9 · <b>HEM:</b> B6, B2, Zn · <b>ŻELAZO:</b> Cu, C, A · <b>BŁONA:</b> E' },
+
+{ t: 'order', tp: 'A', q: 'Ułóż etapy <b>syntezy hemu</b> od pierwszego do ostatniego. Przy każdym kroku zobaczysz, która witamina lub który pierwiastek tam działa.',
+  steps: [
+    ['glicyna + sukcynylo-CoA (koenzym A pochodzi z B5)', 'Sukcynylo-CoA pochodzi z cyklu Krebsa, a etap zachodzi w mitochondrium.'],
+    ['syntaza ALA + PLP (B6) → kwas δ-aminolewulinowy (ALA)', 'Etap limitujący. Niedobór B6 → anemia syderoblastyczna.'],
+    ['ALAD (zawiera Zn) → porfobilinogen', 'Cytoplazma. Ołów hamuje ALAD.'],
+    ['kilka etapów pośrednich → oksydaza protoporfirynogenu (FAD z B2) → protoporfiryna IX', 'Powrót do mitochondrium.'],
+    ['ferrochelataza wbudowuje Fe²⁺ → hem', 'Gdy brakuje żelaza, wbudowuje cynk i rośnie ZPP (protoporfiryna cynkowa), czyli marker niedoboru żelaza.'],
+  ],
+  ex: 'Pierwszy i ostatni etap zachodzą w mitochondrium, a środek w cytoplazmie. Dlatego dojrzałe erytrocyty, które nie mają mitochondriów, nie robią już hemu.',
+  mem: '<b>B5 → B6 → Zn → B2 → Fe</b> („pięć, sześć, cynk, dwa, żelazo”).' },
+
+{ t: 'order', tp: 'A', q: 'Ułóż <b>pułapkę folianową</b> krok po kroku. Ma to wyjaśnić, dlaczego niedobór B12 daje anemię megaloblastyczną, choć folianów nie brakuje.',
+  steps: [
+    ['THF (tetrahydrofolian) przyjmuje jednostkę jednowęglową → 5,10-metyleno-THF', 'To „nośnik węgla”, z którego powstaje tymidylan.'],
+    ['MTHFR (reduktaza metylenotetrahydrofolianowa) zamienia go w 5-metylo-THF', 'Ta reakcja jest praktycznie jednokierunkowa.'],
+    ['syntaza metioniny z B12 przenosi CH₃ z 5-metylo-THF na homocysteinę', 'To jedyne wyjście dla 5-metylo-THF.'],
+    ['THF wraca do puli i może znów służyć do syntezy tymidylanu (DNA)', 'Obieg się zamyka.'],
+    ['BEZ B12: folian zostaje uwięziony jako 5-metylo-THF → brak tymidylanu → megaloblasty', 'Foliany są we krwi, nawet podwyższone, ale nie działają.'],
+  ],
+  ex: 'Folian wpada do „ślepej uliczki” (5-metylo-THF), z której wyprowadza go tylko B12. Duże dawki kwasu foliowego omijają pułapkę (dostarczają nowego THF), więc poprawiają morfologię, ale nie leczą układu nerwowego.',
+  mem: '<b>Brak B12 = folian w pułapce.</b> W badaniach: foliany w normie lub wysokie, homocysteina ↑, MMA (kwas metylomalonowy) ↑.' },
+
+{ t: 'mc', tp: 'A', q: 'Pacjent ma anemię megaloblastyczną. Który wynik badania <b>odróżnia niedobór B12 od niedoboru folianów</b>?',
+  o: [['↑ homocysteina', 'Rośnie w OBU niedoborach. B12 i foliany razem remetylują homocysteinę do metioniny, więc brak któregokolwiek ją podnosi.'],
+      ['↑ MMA (kwas metylomalonowy)', 'Mutaza metylomalonylo-CoA (metylomalonylo-CoA → sukcynylo-CoA) potrzebuje tylko B12. Foliany w tej reakcji nie biorą udziału.'],
+      ['↑ MCV (średnia objętość krwinki czerwonej)', 'Makrocytoza jest w obu, bo obie zaburzają syntezę DNA.'],
+      ['hipersegmentacja neutrofili (co najmniej 6 płatów jądra)', 'Też w obu, bo to ten sam mechanizm zaburzonej syntezy DNA.']], a: 1,
+  ex: 'Homocysteina mówi, że coś jest nie tak z B12 albo folianami. MMA mówi, że to na pewno B12.',
+  mem: '<b>MMA = „Musi Mieć B12”.</b> Homocysteina rośnie w obu niedoborach.' },
+
+{ t: 'case', tp: 'A', q: '52-letni mężczyzna z chorobą alkoholową, je nieregularnie. Anemia makrocytowa, hipersegmentacja neutrofili. Badanie neurologiczne bez odchyleń, MMA (kwas metylomalonowy) w normie. Jaki to niedobór?',
+  o: [['B12', 'Przy niedoborze B12 MMA byłby podwyższony i często byłyby objawy neurologiczne.'],
+      ['kwasu foliowego (B9)', 'Alkohol upośledza wchłanianie i metabolizm folianów, dieta jest uboga, a zapasy folianów wystarczają tylko na kilka miesięcy.'],
+      ['B6', 'B6 daje anemię MIKROcytową, a nie makrocytową.'],
+      ['miedzi', 'Niedobór Cu daje neutropenię, a nie hipersegmentację, i zwykle objawy neurologiczne (mielopatię).']], a: 1,
+  ex: 'Makrocytoza + hipersegmentacja oznaczają problem z syntezą DNA. Prawidłowy MMA i brak objawów neurologicznych wskazują na foliany, a nie B12.',
+  mem: '<b>Zapasy:</b> foliany starczają na miesiące, B12 na lata. Alkoholik → najpierw foliany.' },
+
+{ t: 'case', tp: 'A', q: 'Kobieta od 7 lat na diecie wegańskiej, bez suplementów. Drętwienie stóp, zaburzone czucie wibracji. Hb (hemoglobina) 13 g/dl, MCV (średnia objętość krwinki czerwonej) 99 fl, foliany w surowicy wysokie. Jaki to niedobór?',
+  o: [['kwasu foliowego', 'Foliany są wysokie, bo dieta roślinna jest w nie bogata.'],
+      ['witaminy E', 'Wit. E też uszkadza sznury tylne, ale nie podnosi MCV, a weganie mają jej dużo (oleje roślinne, orzechy).'],
+      ['B12', 'B12 jest tylko w produktach zwierzęcych. Wysokie foliany podtrzymują morfologię, a nerwy dalej się uszkadzają.'],
+      ['B6', 'Niedobór B6 jest rzadki w diecie roślinnej i nie daje makrocytozy.']], a: 2,
+  ex: 'Wysokie foliany maskują niedobór B12: anemii prawie nie ma, a uszkodzenie neurologiczne postępuje. Następny krok: oznaczyć B12, MMA i homocysteinę.',
+  mem: '<b>Weganin + objawy neurologiczne + wysokie foliany = B12, dopóki nie udowodnisz, że nie.</b>' },
+
+{ t: 'case', tp: 'A', q: 'Pacjent kilka lat po operacji bariatrycznej (gastric bypass). Anemia nie reaguje na żelazo. Ma neutropenię i chwiejny chód z zaburzeniami czucia głębokiego. B12 w normie. Czego brakuje?',
+  o: [['folianów', 'Foliany nie dają neutropenii z mielopatią ani anemii opornej na żelazo.'],
+      ['miedzi', 'Dwunastnica, główne miejsce wchłaniania Cu, jest ominięta. Brak Cu = anemia oporna na żelazo + neutropenia + mielopatia jak przy niedoborze B12.'],
+      ['cynku', 'Sam niedobór cynku tego nie daje. Uwaga: NADMIAR cynku z suplementów może wywołać niedobór miedzi.'],
+      ['witaminy C', 'Brak wit. C daje szkorbut (krwawienia, dziąsła), a nie neutropenię i mielopatię.']], a: 1,
+  ex: 'Niedobór miedzi to „naśladowca B12”: daje taką samą mielopatię, ale B12 jest w normie. Do tego anemia, która nie reaguje na żelazo.',
+  mem: '<b>Anemia oporna na Fe + neutropenia + mielopatia → sprawdź Cu</b> (i zapytaj o suplementy cynku).' },
+
+{ t: 'case', tp: 'A', q: 'Wcześniak z 30. tygodnia ciąży. W 6. tygodniu życia ma anemię hemolityczną, obrzęki i małopłytkowość. Jaki to niedobór?',
+  o: [['witaminy E', 'Wcześniak ma małe zapasy wit. E (przechodzi przez łożysko głównie w III trymestrze) i słabo wchłania tłuszcze. Błona erytrocytu jest bez ochrony.'],
+      ['witaminy K', 'Wit. K daje krwawienia, a nie hemolizę.'],
+      ['B12', 'B12 daje anemię megaloblastyczną, a nie hemolityczną, i niemowlę ma zapasy od matki.'],
+      ['żelaza', 'Żelazo daje anemię mikrocytową bez hemolizy.']], a: 0,
+  ex: 'Wit. E jest rozpuszczalna w tłuszczach. Zapasy noworodka rosną dopiero pod koniec ciąży, a jelito wcześniaka słabo wchłania tłuszcze.',
+  mem: '<b>Wcześniak + hemoliza → wit. E.</b>' },
+
+{ t: 'tf', tp: 'A', q: 'Prawda czy fałsz: niedobór witaminy B6 daje anemię <b>makrocytową</b>.', a: false,
+  ex: 'Fałsz. B6 (PLP) jest kofaktorem syntazy ALA, czyli syntezy hemu. Mało hemu → mało hemoglobiny → krwinki MAŁE (mikrocytowe) i z syderoblastami pierścieniowymi w szpiku. Makrocytowe dają B12 i foliany.',
+  mem: 'B6 = hem = <b>mała</b> krwinka.' },
+{ t: 'tf', tp: 'A', q: 'Prawda czy fałsz: witamina C zwiększa wchłanianie żelaza <b>hemowego</b> (z mięsa).', a: false,
+  ex: 'Fałsz. Żelazo hemowe wchłania się całym hemem przez osobny transporter i witaminy C nie potrzebuje. Wit. C pomaga żelazu NIEHEMOWEMU (roślinnemu): redukuje Fe³⁺ do Fe²⁺, które przenosi DMT1 (transporter metali dwuwartościowych 1).',
+  mem: 'Wit. C = pomocnik żelaza <b>roślinnego</b>.' },
+{ t: 'tf', tp: 'A', q: 'Prawda czy fałsz: przy niedoborze B12 stężenie folianów w surowicy może być prawidłowe, a nawet podwyższone.', a: true,
+  ex: 'Prawda. To pułapka folianowa: folian jest uwięziony jako 5-metylo-THF, bo bez B12 nie da się go zamienić z powrotem w THF. We krwi go dużo, ale komórka nie może go użyć do DNA.',
+  mem: 'Wysokie foliany <b>nie</b> wykluczają anemii megaloblastycznej.' },
+{ t: 'tf', tp: 'A', q: 'Prawda czy fałsz: <b>nadmiar</b> cynku (np. z suplementów albo kremu do protez z cynkiem) może wywołać anemię.', a: true,
+  ex: 'Prawda. Cynk pobudza w enterocytach syntezę metalotioneiny. Metalotioneina mocniej wiąże miedź niż cynk, więc miedź zostaje w enterocycie i złuszcza się z nim. Efekt: niedobór miedzi → anemia + neutropenia.',
+  mem: '<b>Za dużo Zn = za mało Cu.</b>' },
+{ t: 'tf', tp: 'A', q: 'Prawda czy fałsz: duże dawki kwasu foliowego mogą zamaskować niedobór B12.', a: true,
+  ex: 'Prawda. Kwas foliowy dostarcza nowego THF z pominięciem pułapki, więc synteza DNA rusza i morfologia się poprawia. Mielina dalej cierpi, bo B12 jest potrzebna w innej reakcji (mutaza metylomalonylo-CoA), więc SCD (podostre złożone zwyrodnienie rdzenia) postępuje.',
+  mem: 'Kwas foliowy leczy <b>krew</b>, a nie <b>nerwy</b>.' },
+
+{ t: 'odd', tp: 'A', q: 'Który z tych niedoborów <b>NIE</b> daje anemii megaloblastycznej?',
+  o: [['B12', 'Daje anemię megaloblastyczną (pułapka folianowa).'], ['kwas foliowy', 'Daje anemię megaloblastyczną (brak tymidylanu).'],
+      ['B6', 'Ten nie pasuje: B6 działa w syntezie hemu, a nie DNA, więc daje anemię mikrocytową.'],
+      ['B12 inaktywowana przez N₂O (podtlenek azotu)', 'Daje anemię megaloblastyczną, bo N₂O utlenia kobalt w B12 i powstaje funkcjonalny niedobór.']], a: 2,
+  ex: 'Megaloblasty = zaburzone DNA. Odrzuć wszystko, co nie dotyczy syntezy nukleotydów.', mem: 'Megaloblastyczna: <b>B12 + B9</b> (+ leki: metotreksat, N₂O).' },
+
+{ t: 'mc', tp: 'A', q: 'Który z tych składników ma <b>najsłabsze dowody</b> jako przyczyna anemii u ludzi?',
+  o: [['miedź', 'Mocne dowody: opisy anemii po operacjach bariatrycznych i przy nadmiarze cynku.'], ['biotyna (H)', 'Słabe dowody: nie ma dobrych danych klinicznych łączących niedobór biotyny z anemią.'],
+      ['witamina E', 'Mocne dowody u wcześniaków.'], ['B12', 'Klasyka, bardzo mocne dowody.']], a: 1,
+  ex: 'Na kolokwium możesz wymienić B5, PP i H, ale z adnotacją, że to głównie biochemiczna spekulacja. Najpierw pisz pewniaki.',
+  mem: '<b>Pewniaki:</b> B12, B9, B6, Cu, C, E · <b>dobre:</b> A · <b>umiarkowane:</b> B2, Zn · <b>słabe:</b> B5, PP, H.' },
+
+{ t: 'mc', tp: 'A', q: 'Pacjent z niedoborem miedzi dostaje żelazo doustnie, a hemoglobina nie rośnie. <b>Dlaczego?</b>',
+  o: [['miedź jest składnikiem hemu', 'Hem zawiera żelazo, a nie miedź.'],
+      ['bez ferroksydaz (ceruloplazmina, hefajstyna) żelazo nie wychodzi z komórek do krwi', 'Żelazo opuszcza enterocyt i makrofag jako Fe²⁺ przez ferroportynę i musi zostać utlenione do Fe³⁺, żeby związać się z transferyną. Robią to enzymy zawierające miedź.'],
+      ['miedź hamuje hepcydynę', 'To nie jest rola miedzi. Hepcydyna to hormon wątrobowy, który blokuje ferroportynę.'],
+      ['miedź jest kofaktorem syntazy ALA', 'Kofaktorem syntazy ALA jest B6 (PLP).']], a: 1,
+  ex: 'Żelazo jest w zapasach, ale zostaje uwięzione w enterocytach i makrofagach. Dlatego dawanie jeszcze więcej żelaza nic nie daje.',
+  mem: '<b>Cu = „klucz do wyjścia” dla żelaza.</b>' },
+
+{ t: 'mc', tp: 'A', q: 'Niedobór B6 daje „syderoblasty pierścieniowe”. <b>Co to jest</b>?',
+  o: [['erytrocyty krwi obwodowej z wtrętami żelaza', 'Erytrocyty z wtrętami żelaza to syderocyty, a nie syderoblasty.'],
+      ['erytroblasty szpiku z żelazem odłożonym w mitochondriach wokół jądra', 'Bez hemu żelazo nie ma gdzie się wbudować i gromadzi się w mitochondriach, które leżą wokół jądra. W barwieniu błękitem pruskim widać „pierścień”.'],
+      ['makrofagi śledziony pełne hemosyderyny', 'To magazyn żelaza, a nie syderoblasty.'],
+      ['neutrofile z hipersegmentowanym jądrem', 'To cecha anemii megaloblastycznej.']], a: 1,
+  ex: 'Ferrochelataza wbudowuje żelazo w protoporfirynę w mitochondrium. Gdy protoporfiryny brakuje (niedobór B6), żelazo czeka w mitochondriach i odkłada się.',
+  mem: '<b>Syderoblast pierścieniowy</b> = żelazo jest, hemu brak (B6, alkohol, ołów, mielodysplazja).' },
+
+{ t: 'mc', tp: 'A', q: 'Jak niedobór <b>witaminy A</b> prowadzi do niedokrwistości?',
+  o: [['hamuje syntezę DNA', 'To mechanizm B12 i folianów.'],
+      ['upośledza uwalnianie żelaza z zapasów i jego transport do szpiku', 'Kwas retinowy reguluje geny metabolizmu żelaza i erytropoezę. Żelazo w surowicy jest niskie, choć zapasy są, a anemia ustępuje po wit. A.'],
+      ['powoduje hemolizę', 'To mechanizm wit. E.'],
+      ['blokuje syntazę ALA', 'To mechanizm B6.']], a: 1,
+  ex: 'Ten typ anemii jest częsty w krajach rozwijających się, gdzie niedobór wit. A współistnieje z niedoborem żelaza. Suplementacja samego żelaza działa wtedy gorzej.',
+  mem: 'Wit. A = <b>mobilizacja żelaza</b> z zapasów.' },
+
+{ t: 'mc', tp: 'A', q: 'Jaki typ niedokrwistości wiąże się z niedoborem <b>B2 (ryboflawiny)</b>?',
+  o: [['mikrocytowa', 'To typowe dla zaburzeń hemu i żelaza (Fe, B6, Cu), a B2 działa głównie pośrednio.'],
+      ['megaloblastyczna', 'To typowe dla B12 i B9.'],
+      ['normocytowa', 'Flawiny (FAD, FMN, czyli mononukleotyd flawinowy) wspierają uwalnianie żelaza i ogólnie erytropoezę. Szpik produkuje mniej krwinek, ale normalnej wielkości.'],
+      ['hemolityczna', 'To typowe dla wit. E.']], a: 2,
+  ex: 'B2 to zawodnik drugiego planu. Dowody są umiarkowane, ale wpisanie jej na kolokwium z mechanizmem jest uzasadnione.',
+  mem: 'B2 = <b>normocytowa</b>, dowody umiarkowane.' },
+
+// ===================== KOŚCI (pyt. 2) =====================
+{ t: 'recall', tp: 'K', need: 8,
+  q: 'Wpisz <b>witaminy i pierwiastki potrzebne do zdrowej kości</b>, czyli takie, których niedobór (albo nadmiar) osłabia kość lub zaburza jej wzrost. Potrzebujesz co najmniej <b>8</b>.',
+  hint: 'Kość to beton zbrojony. (1) Beton = minerał: z czego jest hydroksyapatyt? (2) Kierownik budowy = co reguluje wchłanianie Ca i P i komórki kości? (3) Zbrojenie = co buduje kolagen i białka wiążące wapń? Mnemotechnika: „Dziadek Kazik Pije Mleko, Kakao, Cytrynę, Cukier i Ajerkoniak”.',
+  ok: ['D', 'Ca', 'P', 'Mg', 'K', 'C', 'Cu', 'A', 'F', 'Zn'], weak: ['Mn', 'Si', 'Bo'],
+  tab: {
+    D: '<b>Kierownik.</b> Kalcytriol przez VDR (receptor witaminy D) zwiększa wchłanianie Ca i P w jelicie, więc osteoid ma się czym zmineralizować. Niedobór → <b>krzywica</b> (dzieci) lub <b>osteomalacja</b> (dorośli).',
+    Ca: '<b>Beton.</b> Główny kation hydroksyapatytu Ca₁₀(PO₄)₆(OH)₂. Przy niskiej podaży PTH (parathormon) „pożycza” wapń z kości → osteopenia, osteoporoza.',
+    P: '<b>Beton.</b> Fosforan to drugi składnik hydroksyapatytu. Hipofosfatemia też daje krzywicę i osteomalację.',
+    Mg: '<b>Beton + kierownik.</b> Ok. 60% magnezu ustroju jest w kości. Mg jest potrzebny do wydzielania i działania PTH oraz do aktywacji wit. D.',
+    F: '<b>Beton.</b> Zastępuje OH⁻ i tworzy fluoroapatyt, który jest twardy i odporny na kwasy (próchnica). Nadmiar → fluoroza: kość gęsta, ale krucha.',
+    A: '<b>Kierownik.</b> Kwas retinowy reguluje osteoblasty i osteoklasty. Niedobór zaburza wzrost kości, a NADMIAR zwiększa resorpcję i ryzyko złamań.',
+    K: '<b>Zbrojenie.</b> Kofaktor γ-karboksylazy: karboksyluje osteokalcynę i MGP (białko Gla macierzy), które wiążą wapń. Biochemia pewna, wpływ suplementacji na złamania niejasny.',
+    C: '<b>Zbrojenie.</b> Kofaktor hydroksylazy prolilowej i lizylowej, więc kolagen typu I ma stabilną helisę. Szkorbut → osteopenia, krwiaki podokostnowe.',
+    Cu: '<b>Zbrojenie.</b> Kofaktor oksydazy lizylowej, która sieciuje kolagen i elastynę. Niedobór → osteoporoza, złamania (choroba Menkesa).',
+    Zn: 'Kofaktor ALP (fosfatazy alkalicznej) osteoblastów, wpływa na wzrost. Dowody umiarkowane.',
+    Mn: 'Słabe dowody. Glikozylotransferazy proteoglikanów chrząstki; dane głównie z badań na zwierzętach.',
+    Si: 'Słabe dowody. Możliwy udział w mineralizacji i syntezie kolagenu.',
+    Bo: 'Słabe dowody. Możliwy wpływ na gospodarkę Ca, Mg i wit. D.',
+  },
+  ex: 'Każdy składnik przypisz do jednej z trzech warstw (beton, kierownik, zbrojenie). Wtedy odpowiedź na kolokwium ma strukturę, a nie jest listą.',
+  mem: '<b>„Dziadek Kazik Pije Mleko, Kakao, Cytrynę, Cukier i Ajerkoniak”</b> = D, Ca, P, Mg, K, C, Cu, A + fluor.' },
+
+{ t: 'match', tp: 'K', q: 'Rozszyfruj mnemotechnikę do kości: dopasuj <b>słowo</b> do <b>składnika</b>, którego pierwsza litera się w nim kryje.',
+  pairs: [['Dziadek', 'witamina D', 'D = Dziadek. Kierownik budowy (wchłanianie Ca i P).'], ['Kazik', 'wapń (Ca)', 'Ka = Calcium. Główny składnik hydroksyapatytu.'], ['Pije', 'fosfor (P)', 'P = Pije. Drugi składnik hydroksyapatytu.'],
+    ['Mleko', 'magnez (Mg)', 'M = Mg. Potrzebny do wydzielania i działania PTH (parathormonu).'], ['Kakao', 'witamina K', 'K = Kakao. γ-karboksylacja osteokalcyny.'], ['Cytrynę', 'witamina C', 'C = Cytryna (cytrusy). Hydroksylacja kolagenu.'],
+    ['Cukier', 'miedź (Cu)', 'Cu = Cukier. Oksydaza lizylowa, czyli sieciowanie kolagenu.'], ['Ajerkoniak', 'witamina A', 'A = Ajerkoniak. Szkodzi i niedobór, i nadmiar.']],
+  ex: 'Kolejność w zdaniu: najpierw składniki minerału (D, Ca, P, Mg), potem białek (K, C, Cu), na końcu A, który jest „podejrzany” w obie strony.',
+  mem: 'Do zdania dopisz <b>F (fluor)</b>: dziewiąty pewniak, ważny głównie dla zębów.' },
+
+{ t: 'match', tp: 'K', q: 'Co dokładnie robi w kości? Dopasuj <b>składnik</b> do jego <b>mechanizmu działania</b>.',
+  pairs: [
+    ['wit. D', '↑ wchłanianie Ca i P w jelicie przez VDR (receptor witaminy D)', 'Bez wit. D wchłania się tylko ok. 10–15% wapnia z diety.'],
+    ['wit. K', 'γ-karboksylacja osteokalcyny', 'Reszty Gla (kwasu γ-karboksyglutaminowego) wiążą Ca²⁺ i hydroksyapatyt.'],
+    ['wit. C', 'hydroksylacja proliny i lizyny w kolagenie', 'Hydroksyprolina tworzy wiązania wodorowe stabilizujące potrójną helisę.'],
+    ['Cu', 'oksydaza lizylowa, czyli sieciowanie kolagenu', 'Wiązania krzyżowe między włóknami dają wytrzymałość na rozciąganie.'],
+    ['Mg', 'potrzebny do wydzielania i działania PTH (parathormonu)', 'Ciężka hipomagnezemia → czynnościowa niedoczynność przytarczyc.'],
+    ['F', 'zastępuje OH⁻ i tworzy fluoroapatyt', 'Twardszy i mniej rozpuszczalny w kwasach (szkliwo).'],
+    ['wit. A', 'reguluje osteoblasty i osteoklasty (przez RAR, receptory kwasu retinowego)', 'W nadmiarze przewagę ma resorpcja.'],
+  ],
+  ex: 'D, Ca, P, Mg odpowiadają za mineralizację, a K, C, Cu za jakość białek macierzy. Na kolokwium pisz: składnik → enzym lub receptor → skutek niedoboru.',
+  mem: '<b>C hydroksyluje, Cu sieciuje, K karboksyluje.</b>' },
+
+{ t: 'sort', tp: 'K', q: 'Kość to beton zbrojony. Rozłóż składniki do grup: <b>budują minerał</b> (beton), <b>regulują</b> (kierownik budowy) albo <b>budują białka macierzy</b> (zbrojenie).', buckets: ['budują minerał (beton)', 'regulują: hormony, receptory (kierownik)', 'białka i kolagen macierzy (zbrojenie)'],
+  items: [['Ca', 0, 'kation hydroksyapatytu'], ['P', 0, 'fosforan hydroksyapatytu'], ['Mg', [0, 1], 'jest w minerale kości i reguluje PTH, więc zaliczam obie odpowiedzi'], ['F', 0, 'fluoroapatyt'],
+    ['wit. D', 1, 'hormon steroidowy (VDR, receptor witaminy D)'], ['wit. A', 1, 'kwas retinowy (RAR, receptory kwasu retinowego)'], ['wit. K', 2, 'osteokalcyna, MGP (białko Gla macierzy)'], ['wit. C', 2, 'hydroksylacja kolagenu'], ['Cu', 2, 'sieciowanie kolagenu']],
+  ex: 'Osteomalacja i krzywica to choroby „betonu” (osteoid się nie mineralizuje). Szkorbut i niedobór Cu to choroby „zbrojenia” (wadliwy kolagen).',
+  mem: '<b>Beton:</b> Ca, P, Mg, F · <b>Kierownik:</b> D, A · <b>Zbrojenie:</b> K, C, Cu' },
+
+{ t: 'order', tp: 'K', q: 'Ułóż etapy <b>aktywacji witaminy D</b>: od skóry do działania w jelicie.',
+  steps: [
+    ['skóra: 7-dehydrocholesterol + promieniowanie UVB (ultrafioletowe B)', 'Zimą w Polsce synteza w skórze jest minimalna.'],
+    ['cholekalcyferol (D3)', 'Ta sama postać przychodzi z ryb i suplementów.'],
+    ['wątroba: 25-hydroksylaza → 25(OH)D (kalcydiol)', 'Postać krążąca i magazynowa. To ją oznaczamy w surowicy.'],
+    ['nerka: 1α-hydroksylaza → 1,25(OH)₂D (kalcytriol)', 'Postać aktywna. Pobudza ją PTH (parathormon), hamuje FGF23 (czynnik wzrostu fibroblastów 23).'],
+    ['VDR (receptor witaminy D) w enterocycie → ↑ wchłanianie Ca i P', 'Wit. D działa jak hormon steroidowy na geny.'],
+  ],
+  ex: 'Kolejność narządów: skóra → wątroba → nerka. Niewydolność nerek blokuje ostatni etap (osteodystrofia nerkowa), choroby wątroby środkowy.',
+  mem: '<b>Skóra → wątroba (25) → nerka (1).</b> Zaopatrzenie ocenia 25(OH)D, a nie kalcytriol.' },
+
+{ t: 'order', tp: 'K', q: 'Ułóż etapy <b>dojrzewania kolagenu</b>, czyli rusztowania kości, i zobacz, gdzie działa wit. C, a gdzie miedź.',
+  steps: [
+    ['synteza łańcuchów prokolagenu na rybosomach', 'Powtarzający się motyw Gly-X-Y, gdzie X i Y to często prolina i lizyna.'],
+    ['hydroksylacja proliny i lizyny (wit. C + Fe²⁺)', 'Wit. C utrzymuje żelazo hydroksylazy w postaci Fe²⁺.'],
+    ['złożenie trzech łańcuchów w potrójną helisę', 'Bez hydroksyproliny helisa jest niestabilna w temperaturze ciała.'],
+    ['wydzielenie i odcięcie propeptydów', 'Powstaje tropokolagen.'],
+    ['sieciowanie przez oksydazę lizylową (Cu)', 'Wiązania krzyżowe między cząsteczkami dają wytrzymałość.'],
+  ],
+  ex: 'Wit. C działa w środku komórki (wczesny etap), miedź na zewnątrz (ostatni etap). Oba niedobory dają słabą tkankę łączną: kości, naczynia, dziąsła.',
+  mem: '<b>Najpierw C (hydroksylacja), na końcu Cu (sieciowanie).</b>' },
+
+{ t: 'mc', tp: 'K', q: 'Jaki jest wzór <b>hydroksyapatytu</b>, czyli głównego minerału kości?',
+  o: [['Ca₁₀(PO₄)₆(OH)₂', 'Poprawnie: 10 Ca, 6 grup fosforanowych i 2 grupy OH.'], ['Ca₃(PO₄)₂', 'To fosforan wapnia, prostsza sól, a nie apatyt.'],
+      ['CaCO₃', 'To węglan wapnia (np. muszle). W kości występuje tylko jako domieszka.'], ['Ca₁₀(PO₄)₆F₂', 'To fluoroapatyt: fluor zastąpił grupy OH.']], a: 0,
+  ex: 'Fluor może zastąpić grupę OH, a wtedy powstaje fluoroapatyt. Tak działa fluor w zębach.',
+  mem: '<b>10–6–2:</b> Ca₁₀(PO₄)₆(OH)₂.' },
+
+{ t: 'mc', tp: 'K', q: 'Co jest charakterystyczne dla <b>fluorozy szkieletowej</b> (przewlekłego nadmiaru fluoru)?',
+  o: [['kość rzadsza i miękka', 'To obraz osteomalacji, a nie fluorozy.'],
+      ['kość gęstsza, ale bardziej krucha, zwapnienia więzadeł', 'Fluoroapatyt zwiększa gęstość (w RTG kość jest „biała”), ale macierz jest nieprawidłowa i kość łatwiej pęka.'],
+      ['brak zmian w kości', 'Przewlekły duży nadmiar fluoru zmienia kość.'],
+      ['tylko plamy na zębach', 'To fluoroza zębów, która występuje przy mniejszym nadmiarze i w dzieciństwie.']], a: 1,
+  ex: 'Gęstsza nie znaczy mocniejsza. W badaniach z dużymi dawkami fluorku gęstość kości rosła, a złamań nie ubywało.',
+  mem: '<b>Fluor: gęsto ≠ mocno.</b>' },
+
+{ t: 'mc', tp: 'K', q: 'Czym się <b>różni</b> osteomalacja od osteoporozy?',
+  o: [['to synonimy', 'To różne choroby.'],
+      ['w osteomalacji macierz jest, ale się nie mineralizuje; w osteoporozie mineralizacja jest prawidłowa, ale kości jest za mało', 'Osteomalacja to problem „betonu” (niedobór wit. D i fosforanów). Osteoporoza to problem ilości: kość ma prawidłowy skład, tylko jest jej mniej.'],
+      ['osteomalacja dotyczy tylko dzieci', 'U dzieci ten sam proces nazywamy krzywicą.'],
+      ['w osteoporozie wapń i fosforan w surowicy są obniżone', 'W osteoporozie są zwykle prawidłowe. W osteomalacji z niedoboru wit. D często są niskie, a ALP (fosfataza alkaliczna) wysoka.']], a: 1,
+  ex: 'W osteomalacji rośnie ALP i PTH (parathormon) i mogą być strefy Loosera (pasma przebudowy w RTG). W osteoporozie badania krwi są zwykle prawidłowe.',
+  mem: '<b>Malacja = miękka</b> (zła jakość) · <b>porozja = dziurawa</b> (za mało kości).' },
+
+{ t: 'tf', tp: 'K', q: 'Prawda czy fałsz: osteomalacja to dziecięca postać krzywicy.', a: false,
+  ex: 'Fałsz, jest odwrotnie. Krzywica (rachitis, rickets) to postać dziecięca, bo dotyczy też płytek wzrostowych (deformacje, różaniec krzywiczy). Osteomalacja to postać dorosłych, gdy płytki są już zamknięte. Mechanizm jest ten sam: brak mineralizacji osteoidu.',
+  mem: '<b>Krzywica = rośnie i się krzywi</b> (dziecko).' },
+{ t: 'tf', tp: 'K', q: 'Prawda czy fałsz: przewlekły nadmiar witaminy A (retinolu) zwiększa ryzyko złamań.', a: true,
+  ex: 'Prawda. Duże dawki retinolu pobudzają osteoklasty i hamują osteoblasty. W badaniach obserwacyjnych wysokie spożycie retinolu wiązało się z większą liczbą złamań biodra.',
+  mem: 'Wit. A jest „podejrzana” <b>w obie strony</b>.' },
+{ t: 'tf', tp: 'K', q: 'Prawda czy fałsz: rola manganu w zdrowiu kości u ludzi jest mocno udokumentowana.', a: false,
+  ex: 'Fałsz. Mangan jest kofaktorem glikozylotransferaz, które budują proteoglikany chrząstki, i u zwierząt jego niedobór deformuje kości. U ludzi ciężkiego niedoboru praktycznie się nie spotyka i danych brak. Podobnie z krzemem i borem.',
+  mem: 'Mn, Si, B: wymieniasz na końcu, z adnotacją <b>„słabe dowody”</b>.' },
+
+{ t: 'case', tp: 'K', q: 'Roczne dziecko karmione wyłącznie piersią, bez suplementacji. Rozmiękanie kości potylicznej (craniotabes), niebolesne zgrubienia na połączeniach chrzęstno-żebrowych, opóźnione ząbkowanie. Jaki to niedobór?',
+  o: [['witaminy C', 'W szkorbucie zgrubienia żebrowe są BOLESNE i ostre, są krwawienia i krwiaki podokostnowe.'],
+      ['witaminy D', 'Krzywica: osteoid się nie mineralizuje, kości są miękkie, a chrząstka wzrostowa się rozrasta (różaniec krzywiczy).'],
+      ['witaminy K', 'Wit. K daje krwawienia, a nie miękkie kości.'], ['miedzi', 'Niedobór Cu u niemowlęcia jest rzadki i daje osteoporozę, anemię i neutropenię.']], a: 1,
+  ex: 'Mleko kobiece zawiera mało wit. D, dlatego niemowlęta karmione piersią dostają ją jako suplement od pierwszych dni życia.',
+  mem: '<b>Różaniec krzywiczy</b> (rachitic rosary): gładki, niebolesny · <b>szkorbutowy</b>: ostry, bolesny.' },
+
+{ t: 'case', tp: 'K', q: 'Kobieta przyjmowała warfarynę w I trymestrze ciąży. Noworodek ma niedorozwój nosa (hipoplazja) i punktowate zwapnienia nasad kości. Zahamowanie czego to spowodowało?',
+  o: [['wchłaniania wapnia', 'Warfaryna nie wpływa na wchłanianie wapnia.'],
+      ['γ-karboksylacji zależnej od witaminy K', 'Warfaryna blokuje VKORC1 (reduktazę epoksydu witaminy K). Osteokalcyna i MGP (białko Gla macierzy) nie są karboksylowane, więc chrząstka wapnieje nieprawidłowo.'],
+      ['hydroksylacji kolagenu', 'To mechanizm wit. C.'], ['syntezy kalcytriolu', 'To etap nerkowy aktywacji wit. D, warfaryna go nie dotyczy.']], a: 1,
+  ex: 'Embriopatia warfarynowa to dowód, że witamina K jest ważna dla kości, a nie tylko dla krzepnięcia. MGP chroni chrząstkę przed nieprawidłowym wapnieniem.',
+  mem: '<b>Warfaryna w ciąży → embriopatia</b> (nos + kropkowane nasady).' },
+
+{ t: 'case', tp: 'K', q: 'Czterolatek z wybiórczością pokarmową (je tylko chrupki i mleko). Bolą go nogi, nie chce chodzić, dziąsła krwawią. W RTG widać krwiaki podokostnowe. Jaki to niedobór?',
+  o: [['witaminy D', 'Krzywica nie daje krwawień ani krwiaków podokostnowych.'],
+      ['witaminy C', 'Szkorbut: kolagen typu I bez hydroksyproliny jest słaby, naczynia pękają (krwiaki podokostnowe, dziąsła), a kość jest osteopeniczna.'],
+      ['wapnia', 'Niedobór wapnia nie daje krwawień.'], ['fluoru', 'Fluor nie ma związku z krwawieniami.']], a: 1,
+  ex: 'Ból i niechęć do chodzenia biorą się z krwiaków pod okostną (pseudoparaliż). Mleko krowie i chrupki praktycznie nie zawierają wit. C.',
+  mem: '<b>Szkorbut u dziecka</b> = ból nóg + krwawiące dziąsła + wybiórcza dieta.' },
+
+{ t: 'mc', tp: 'K', q: 'Pacjent ma hipokalcemię, która nie poprawia się po wapniu i witaminie D. Co sprawdzić <b>najpierw</b>?',
+  o: [['fosfor', 'Fosfor zmienia się razem z wapniem, ale nie blokuje PTH.'],
+      ['magnez', 'Przy ciężkim niedoborze magnezu przytarczyce nie wydzielają PTH (parathormonu), a kość i nerka na niego nie reagują. Najpierw trzeba wyrównać Mg.'],
+      ['cynk', 'Cynk nie wpływa na PTH.'], ['witaminę K', 'Wit. K nie reguluje stężenia wapnia we krwi.']], a: 1,
+  ex: 'Typowe sytuacje: alkoholizm, biegunki, długotrwałe przyjmowanie IPP (inhibitorów pompy protonowej), diuretyki. Hipokalcemia „oporna” to często hipomagnezemia.',
+  mem: '<b>Oporna hipokalcemia (i hipokaliemia) → sprawdź Mg.</b>' },
+
+{ t: 'odd', tp: 'K', q: 'Który składnik <b>NIE</b> jest częścią kryształu kości?',
+  o: [['wapń', 'Jest: Ca₁₀ w hydroksyapatycie.'], ['fosfor', 'Jest: (PO₄)₆ w hydroksyapatycie.'], ['fluor', 'Może być: zastępuje OH⁻ w fluoroapatycie.'],
+      ['witamina K', 'Nie jest: wit. K działa przez białka (γ-karboksylacja osteokalcyny), które wiążą kryształ, ale sama nie jest jego częścią.']], a: 3,
+  ex: 'Odróżniaj składniki minerału od kofaktorów enzymów. Witaminy nie są częścią kryształu.', mem: 'Kryształ: <b>Ca, P, (F, Mg)</b>. Witaminy tylko pomagają.' },
+
+{ t: 'mc', tp: 'K', q: 'Który parametr najlepiej ocenia <b>zaopatrzenie organizmu w witaminę D</b>?',
+  o: [['kalcytriol, czyli 1,25(OH)₂D', 'Ma krótki okres półtrwania (godziny), a w niedoborze bywa prawidłowy albo nawet podwyższony, bo PTH (parathormon) pobudza nerkę.'],
+      ['25(OH)D (kalcydiol)', 'Postać krążąca i magazynowa, okres półtrwania ok. 2–3 tygodnie, dobrze odzwierciedla podaż.'],
+      ['wapń zjonizowany', 'Jest regulowany przez PTH i długo zostaje w normie mimo niedoboru.'], ['ALP (fosfataza alkaliczna)', 'Rośnie dopiero przy chorobie kości (osteomalacja), a nie przy samym niedoborze.']], a: 1,
+  ex: 'Pułapka: kalcytriol jest aktywny, więc „logicznie” wydaje się lepszy. Ale to zapas (25(OH)D) mówi, ile witaminy ma organizm.',
+  mem: '<b>Zapas mierz 25, a nie 1,25.</b>' },
+];
+
+TASKS.push(
+// ===================== UKŁAD NERWOWY (pyt. 3) =====================
+{ t: 'recall', tp: 'N', need: 8,
+  q: 'Wpisz <b>witaminy i pierwiastki potrzebne do prawidłowej pracy układu nerwowego</b>, czyli takie, których niedobór daje objawy neurologiczne lub psychiczne (np. neuropatię, drgawki, otępienie, zaburzenia rozwoju). Potrzebujesz co najmniej <b>8</b>.',
+  hint: 'Witaminy: „B 1-6-9-12 + PP + E”. Pierwiastki: „Magda Kupiła Cukier, Fasolę, Imbir, Ziemniaki” = Mg, Ca, Cu, Fe, I, Zn.',
+  ok: ['B1', 'B6', 'B9', 'B12', 'PP', 'E', 'Mg', 'Ca', 'Cu', 'Fe', 'I', 'Zn', 'A'], weak: ['B5', 'H', 'C'],
+  tab: {
+    B1: '<b>Energia.</b> TPP (pirofosforan tiaminy) jest kofaktorem PDH (dehydrogenazy pirogronianowej), dehydrogenazy α-ketoglutaranu i transketolazy. Neuron żyje z glukozy → <b>beri-beri</b>, <b>encefalopatia Wernickego</b>, <b>zespół Korsakowa</b>.',
+    PP: '<b>Energia.</b> NAD⁺/NADP⁺ (dinukleotyd nikotynamidoadeninowy i jego fosforan) → pelagra: <b>otępienie</b> (dementia), depresja.',
+    B6: '<b>Neuroprzekaźniki.</b> PLP (fosforan pirydoksalu) jest kofaktorem dekarboksylaz: GABA (kwas γ-aminomasłowy), serotonina, dopamina → <b>drgawki</b>, neuropatia. Nadmiar też daje neuropatię.',
+    B12: '<b>Mielina.</b> Mutaza metylomalonylo-CoA i synteza SAM (S-adenozylometioniny) → <b>SCD</b> (podostre złożone zwyrodnienie rdzenia), neuropatia, otępienie.',
+    B9: '<b>Rozwój / metylacja.</b> Niedobór w ciąży → <b>wady cewy nerwowej</b>. U dorosłych depresja, ↑ homocysteina.',
+    E: '<b>Ochrona błon.</b> Antyoksydant długich aksonów i sznurów tylnych → <b>ataksja</b>, neuropatia, retinopatia.',
+    Mg: '<b>Pobudliwość.</b> Blokuje receptor NMDA (N-metylo-D-asparaginianowy) i kanały Ca²⁺ → niedobór: drżenie, tężyczka, <b>drgawki</b>.',
+    Ca: '<b>Pobudliwość.</b> Stabilizuje błonę (podnosi próg kanałów Na⁺) i uwalnia neuroprzekaźniki → hipokalcemia: <b>tężyczka</b>, parestezje, drgawki.',
+    Cu: '<b>Neuroprzekaźniki / mielina.</b> β-hydroksylaza dopaminowa, oksydaza cytochromu c → <b>mielopatia</b> jak przy niedoborze B12, choroba Menkesa.',
+    Fe: '<b>Neuroprzekaźniki / rozwój.</b> Hydroksylaza tyrozynowa i tryptofanowa, mielinizacja → zaburzenia rozwoju poznawczego u dzieci, <b>zespół niespokojnych nóg</b>.',
+    I: '<b>Rozwój.</b> Hormony tarczycy sterują mielinizacją i migracją neuronów płodu → <b>kretynizm</b>.',
+    Zn: 'Gromadzi się w pęcherzykach synaptycznych (hipokamp) i moduluje NMDA → zaburzenia smaku, węchu, nastroju. Dowody umiarkowane.',
+    A: 'Rodopsyna w siatkówce (część OUN, ośrodkowego układu nerwowego) → <b>kurza ślepota</b>. Kwas retinowy steruje też rozwojem cewy nerwowej.',
+    B5: 'Słabe dowody. CoA (koenzym A) jest potrzebny do syntezy acetylocholiny. „Zespół palących stóp” opisano u niedożywionych jeńców.',
+    H: 'Słabe dowody. W ciężkim niedoborze opisywano depresję i parestezje.',
+    C: 'Biochemicznie ważna (β-hydroksylaza dopaminowa, czyli synteza noradrenaliny; antyoksydant mózgu), ale niedobór nie daje typowego zespołu neurologicznego. W szkorbucie są zmęczenie i obniżony nastrój. Możesz wymienić na końcu jako „bonus”.',
+  },
+  ex: 'Ułóż odpowiedź według mechanizmów: energia neuronu, neuroprzekaźniki, mielina i rozwój, pobudliwość błony, ochrona błon.',
+  mem: '<b>„B 1-6-9-12 + PP + E”</b> · <b>„Magda Kupiła Cukier, Fasolę, Imbir, Ziemniaki”</b> (Mg, Ca, Cu, Fe, I, Zn).' },
+
+{ t: 'match', tp: 'N', q: 'Jedno słowo-klucz na składnik: dopasuj <b>składnik</b> do jego <b>głównej roli w układzie nerwowym</b>.',
+  pairs: [
+    ['B1', 'PDH (dehydrogenaza pirogronianowa): energia z glukozy', 'Bez TPP pirogronian nie wchodzi do cyklu Krebsa, a mózg bierze energię niemal wyłącznie z glukozy.'],
+    ['B6', 'synteza GABA (kwasu γ-aminomasłowego)', 'Dekarboksylaza glutaminianu (GAD) potrzebuje PLP. Brak GABA → przewaga pobudzenia → drgawki.'],
+    ['B12', 'synteza i utrzymanie mieliny', 'Przy niedoborze nieprawidłowe kwasy tłuszczowe wbudowują się w mielinę, a metylacja (SAM) zawodzi.'],
+    ['Mg', 'blok receptora NMDA (N-metylo-D-asparaginianowego)', 'W spoczynku Mg²⁺ „zatyka” kanał. Bez niego glutaminian pobudza za łatwo.'],
+    ['jod', 'mielinizacja mózgu płodu (przez hormony tarczycy)', 'T3 (trijodotyronina) steruje genami mieliny i migracją neuronów.'],
+    ['Fe', 'hydroksylaza tyrozynowa (dopamina)', 'Pierwszy, limitujący etap syntezy katecholamin.'],
+    ['Cu', 'β-hydroksylaza dopaminowa (noradrenalina)', 'Ostatni etap: dopamina → noradrenalina.'],
+    ['wit. E', 'ochrona błon długich aksonów przed utlenianiem', 'Najdłuższe aksony (sznury tylne, nerwy obwodowe) najbardziej cierpią.'],
+  ],
+  ex: 'Na kolokwium dla każdego składnika podaj: słowo-klucz (enzym lub proces) + objaw niedoboru. To wystarcza na pełną odpowiedź.',
+  mem: '<b>Katecholaminy:</b> zaczyna Fe, kończy Cu (z wit. C), pośrodku B6.' },
+
+{ t: 'match', tp: 'N', q: 'Dopasuj <b>niedobór składnika</b> do <b>objawu neurologicznego</b>, który wywołuje.',
+  pairs: [
+    ['B1', 'encefalopatia Wernickego (splątanie, oczopląs, ataksja)', 'Uszkodzone ciała suteczkowate (corpora mamillaria, mammillary bodies) i przyśrodkowe wzgórze (thalamus).'],
+    ['B6', 'drgawki (niemowlęta, przedawkowanie izoniazydu)', 'Brak GABA, głównego neuroprzekaźnika hamującego.'],
+    ['B12', 'podostre złożone zwyrodnienie rdzenia (SCD)', 'Sznury tylne (funiculi posteriores, posterior columns) + drogi korowo-rdzeniowe boczne.'],
+    ['wit. E', 'ataksja rdzeniowo-móżdżkowa z neuropatią', 'Obraz podobny do ataksji Friedreicha.'],
+    ['Fe', 'zespół niespokojnych nóg', 'Niedobór żelaza w mózgu zaburza przekaźnictwo dopaminergiczne.'],
+    ['jod (w ciąży)', 'kretynizm (niepełnosprawność intelektualna, głuchota)', 'Najczęstsza na świecie przyczyna niepełnosprawności intelektualnej, której można zapobiec.'],
+    ['PP', 'otępienie w pelagrze', 'Jedno z „4 D”: dermatitis, diarrhea, dementia, death (zapalenie skóry, biegunka, otępienie, śmierć).'],
+    ['Mg', 'tężyczka i drżenie', 'Nadpobudliwość nerwowo-mięśniowa. Często współistnieje hipokalcemia.'],
+  ],
+  ex: 'Grupy objawów: sznury tylne (B12, Cu, E) · drgawki (B6, Mg, Ca) · otępienie (B1, B12, PP) · rozwój (jod, foliany, Fe).',
+  mem: '<b>Sznury tylne niszczą trzy:</b> B12, Cu, E.' },
+
+{ t: 'sort', tp: 'N', q: 'Rozłóż składniki według <b>mechanizmu</b>, przez który działają w układzie nerwowym.', buckets: ['energia neuronu', 'synteza neuroprzekaźników', 'mielina i rozwój', 'pobudliwość błony', 'ochrona błon (antyoksydant)'],
+  items: [['B1', 0, 'TPP, kofaktor PDH (dehydrogenazy pirogronianowej)'], ['PP', 0, 'NAD⁺ (dinukleotyd nikotynamidoadeninowy)'], ['B6', 1, 'PLP do dekarboksylaz (GABA, dopamina, serotonina)'], ['Fe', [1, 2], 'hydroksylaza tyrozynowa i mielinizacja, więc zaliczam obie odpowiedzi'],
+    ['Cu', [1, 2], 'β-hydroksylaza dopaminowa i mielina, więc zaliczam obie odpowiedzi'], ['B12', 2, 'mielina'], ['jod', 2, 'hormony tarczycy, czyli rozwój mózgu'], ['Mg', 3, 'blok NMDA (receptora N-metylo-D-asparaginianowego)'], ['Ca', 3, 'stabilizacja kanałów Na⁺'], ['wit. E', 4, 'antyoksydant błon aksonów']],
+  ex: 'Takie grupy to gotowa struktura odpowiedzi na kolokwium: zamiast listy 13 nazw piszesz 5 mechanizmów z przykładami.',
+  mem: '<b>Energia</b> B1, PP · <b>przekaźniki</b> B6, Fe, Cu · <b>mielina</b> B12, I · <b>błona</b> Mg, Ca · <b>ochrona</b> E' },
+
+{ t: 'order', tp: 'N', q: 'Ułóż <b>syntezę katecholamin</b> od aminokwasu do noradrenaliny i zobacz, gdzie wchodzą Fe, B6, Cu i wit. C.',
+  steps: [
+    ['tyrozyna', 'Z diety albo z fenyloalaniny (hydroksylaza fenyloalaninowa).'],
+    ['hydroksylaza tyrozynowa (Fe²⁺, tetrahydrobiopteryna) → L-DOPA', 'Etap limitujący. Niedobór żelaza go spowalnia.'],
+    ['dekarboksylaza aminokwasów aromatycznych (PLP z B6) → dopamina', 'Ta sama dekarboksylaza robi serotoninę z 5-hydroksytryptofanu.'],
+    ['β-hydroksylaza dopaminowa (Cu + wit. C) → noradrenalina', 'Zachodzi w pęcherzykach synaptycznych. Wit. C jest dawcą elektronów.'],
+  ],
+  ex: 'Ten szlak wyjaśnia, czemu niedobór żelaza wiąże się z zespołem niespokojnych nóg, a w chorobie Menkesa (brak Cu) jest za mało noradrenaliny.',
+  mem: '<b>Fe → B6 → Cu + C</b>: zaczyna „żelaźnie”, kończy „miedziano”.' },
+
+{ t: 'case', tp: 'N', q: 'Niedożywiony mężczyzna z chorobą alkoholową trafia na SOR (szpitalny oddział ratunkowy): splątanie, oczopląs, chód na szerokiej podstawie. Glikemia 60 mg/dl. Co robisz?',
+  o: [['podajesz samą glukozę', 'Glukoza bez tiaminy przyspiesza zużycie resztek TPP (pirofosforanu tiaminy) i może nasilić encefalopatię.'],
+      ['podajesz tiaminę dożylnie razem z glukozą (albo tuż przed)', 'To encefalopatia Wernickego (niedobór B1). Hipoglikemii nie wolno zostawić bez leczenia, więc podajesz obie i nie opóźniasz glukozy.'],
+      ['podajesz B12 domięśniowo', 'B12 nie daje ostrej triady: splątanie, oczopląs, ataksja.'], ['podajesz magnez doustnie', 'Mg warto wyrównać (jest kofaktorem enzymów zależnych od tiaminy), ale to nie jest leczenie pierwszego rzutu.']], a: 1,
+  ex: 'Klasyczna triada (splątanie, zaburzenia ruchów gałek ocznych, ataksja) występuje w pełni tylko u części chorych, więc u alkoholików podaje się tiaminę „na wszelki wypadek”.',
+  mem: '<b>Alkoholik + glukoza → najpierw lub razem tiamina.</b>' },
+
+{ t: 'case', tp: 'N', q: 'Student od miesięcy wdycha rekreacyjnie „gaz rozweselający” z balonów. Ma mrowienie dłoni i stóp i niepewny chód, gorszy po zamknięciu oczu. B12 w surowicy w normie. O czym myślisz?',
+  o: [['o niedoborze witaminy E', 'Wit. E też uszkadza sznury tylne, ale nie ma związku z N₂O.'],
+      ['o funkcjonalnym niedoborze B12, bo N₂O (podtlenek azotu) utlenia kobalt', 'N₂O inaktywuje kobalt w kobalaminie. B12 jest we krwi, ale nie działa. MMA (kwas metylomalonowy) i homocysteina są podwyższone.'],
+      ['o niedoborze B1', 'B1 daje encefalopatię Wernickego, a nie zaburzenia czucia głębokiego.'], ['o nadmiarze B6', 'Nadmiar B6 daje neuropatię czuciową, ale nie wiąże się z N₂O.']], a: 1,
+  ex: 'Objaw Romberga (chwianie po zamknięciu oczu) oznacza uszkodzenie czucia głębokiego, czyli sznurów tylnych. Prawidłowe stężenie B12 nie wyklucza niedoboru, więc oznacz MMA i homocysteinę.',
+  mem: '<b>N₂O = „B12 jest, ale nie działa”.</b>' },
+
+{ t: 'case', tp: 'N', q: 'Pacjent przedawkował izoniazyd (lek przeciwgruźliczy). Ma drgawki, które nie ustępują po benzodiazepinach. Co podajesz?',
+  o: [['pirydoksynę (B6) dożylnie', 'Izoniazyd wiąże i inaktywuje PLP, więc brakuje GABA. Benzodiazepiny tylko wzmacniają działanie GABA, którego nie ma. Antidotum: B6, w dawce gram na gram izoniazydu.'],
+      ['tiaminę', 'B1 nie wpływa na syntezę GABA.'], ['fenytoinę', 'W tych drgawkach jest zwykle nieskuteczna.'], ['magnez', 'Magnez nie odwraca niedoboru GABA.']], a: 0,
+  ex: 'Dlatego chorzy leczeni izoniazydem dostają profilaktycznie B6, żeby zapobiec neuropatii obwodowej.',
+  mem: '<b>Izoniazyd + drgawki = B6.</b>' },
+
+{ t: 'tf', tp: 'N', q: 'Prawda czy fałsz: w encefalopatii Wernickego typowo uszkodzone są ciała suteczkowate (corpora mamillaria, mammillary bodies).', a: true,
+  ex: 'Prawda. Uszkodzone są też przyśrodkowe jądra wzgórza (thalamus) i istota szara okołowodociągowa (substantia grisea centralis, periaqueductal grey). Te struktury mają duży metabolizm glukozy i zależą od TPP. W MR (rezonansie magnetycznym) widać w nich hiperintensywny sygnał.',
+  mem: 'Wernicke = <b>ciała suteczkowate</b>. Przewlekle przechodzi w zespół Korsakowa (konfabulacje).' },
+{ t: 'tf', tp: 'N', q: 'Prawda czy fałsz: objawy neurologiczne niedoboru B12 mogą wystąpić bez anemii.', a: true,
+  ex: 'Prawda. U ok. 1/4 chorych zmiany neurologiczne wyprzedzają anemię albo występują bez niej, zwłaszcza gdy ktoś przyjmuje kwas foliowy, który „naprawia” morfologię.',
+  mem: '<b>Prawidłowa morfologia nie wyklucza niedoboru B12.</b>' },
+{ t: 'tf', tp: 'N', q: 'Prawda czy fałsz: duże dawki witaminy B6 z suplementów chronią nerwy obwodowe.', a: false,
+  ex: 'Fałsz. Przewlekłe przyjmowanie dużych dawek B6 daje czuciową neuropatię aksonalną (drętwienie, ataksja czuciowa). B6 to jedna z niewielu witamin rozpuszczalnych w wodzie, która szkodzi w nadmiarze.',
+  mem: 'B6: <b>za mało = drgawki, za dużo = neuropatia.</b>' },
+
+{ t: 'odd', tp: 'N', q: 'Który składnik <b>NIE</b> uczestniczy bezpośrednio w syntezie dopaminy i noradrenaliny?',
+  o: [['żelazo', 'Uczestniczy: hydroksylaza tyrozynowa.'], ['miedź', 'Uczestniczy: β-hydroksylaza dopaminowa.'], ['B6', 'Uczestniczy: dekarboksylaza L-DOPA (PLP).'],
+      ['B12', 'Nie uczestniczy. B12 działa w mielinie i metylacji, a nie w syntezie katecholamin.']], a: 3,
+  ex: 'Gdy pytanie dotyczy konkretnego szlaku, odtwórz enzymy krok po kroku: tyrozyna → L-DOPA → dopamina → noradrenalina.', mem: 'Katecholaminy: <b>Fe, B6, Cu, C</b>.' },
+
+{ t: 'mc', tp: 'N', q: 'Jak magnez <b>zmniejsza pobudliwość</b> neuronów?',
+  o: [['pobudza syntezę GABA', 'To rola B6, a nie magnezu.'],
+      ['blokuje kanał receptora NMDA (N-metylo-D-asparaginianowego) i kanały wapniowe', 'Mg²⁺ siedzi w kanale NMDA przy potencjale spoczynkowym i wypada dopiero przy depolaryzacji. Konkuruje też z Ca²⁺ o kanały i uwalnianie neuroprzekaźników.'],
+      ['zwiększa wydzielanie acetylocholiny', 'Działa odwrotnie: Mg zmniejsza uwalnianie acetylocholiny w złączu nerwowo-mięśniowym.'], ['hamuje pompę Na⁺/K⁺', 'Pompa Na⁺/K⁺ (ATP-aza) potrzebuje Mg, a nie jest przez niego hamowana.']], a: 1,
+  ex: 'Dlatego siarczan magnezu podaje się w stanie przedrzucawkowym i rzucawce, żeby zapobiec drgawkom.',
+  mem: '<b>Mg = „korek” w kanale NMDA.</b>' },
+
+{ t: 'mc', tp: 'N', q: 'Które struktury rdzenia kręgowego (medulla spinalis, spinal cord) uszkadza niedobór B12?',
+  o: [['rogi przednie (cornua anteriora, anterior horns)', 'Rogi przednie uszkadza np. SMA (rdzeniowy zanik mięśni) lub polio, a nie B12.'],
+      ['sznury tylne (funiculi posteriores, posterior columns) i drogi korowo-rdzeniowe boczne', 'To SCD, czyli podostre złożone zwyrodnienie rdzenia: czucie wibracji i ułożenia (Romberg dodatni) + objawy piramidowe (objaw Babińskiego, wzmożone napięcie).'],
+      ['drogi rdzeniowo-wzgórzowe (czucie bólu i temperatury)', 'Są typowo oszczędzone, dlatego czucie bólu jest zachowane.'], ['tylko korzenie nerwowe', 'Zmiany dotyczą istoty białej rdzenia, a nie tylko korzeni.']], a: 1,
+  ex: 'Dlaczego „złożone”? Bo uszkodzone są jednocześnie dwa systemy: czuciowy (sznury tylne) i ruchowy (drogi piramidowe).',
+  mem: '<b>SCD = Romberg + Babiński.</b>' },
+
+// ===================== SKÓRA (pyt. 4) =====================
+{ t: 'recall', tp: 'S', need: 8,
+  q: 'Niedobory często najpierw widać „na zewnątrz”. Wpisz <b>witaminy i pierwiastki, których NIEDOBÓR daje zmiany na skórze, włosach, paznokciach albo w kącikach ust i na języku</b> (np. wysypkę, łysienie, zajady, łamliwe paznokcie, wybroczyny). Potrzebujesz co najmniej <b>8</b>.',
+  hint: 'Przejdź po ciele od góry: <b>włosy</b> (łysienie, odbarwienie) → <b>usta i język</b> (zajady, zapalenie języka) → <b>skóra</b> (zapalenie skóry na słońcu, wokół otworów ciała, rogowacenie, wybroczyny) → <b>paznokcie</b> (łyżeczkowate). Do każdego objawu dopasuj składnik.',
+  ok: ['A', 'C', 'PP', 'Zn', 'H', 'B2', 'B6', 'B9', 'B12', 'Cu', 'Fe', 'Se', 'K'], weak: ['B5'],
+  tab: {
+    PP: '<b>Skóra na słońcu.</b> NAD⁺ (dinukleotyd nikotynamidoadeninowy) jest potrzebny do naprawy DNA po UV (ultrafiolecie) → pelagra: symetryczne zapalenie skóry na odsłoniętych miejscach, naszyjnik Casala.',
+    Zn: '<b>Wokół otworów ciała.</b> Podziały komórek i gojenie → zapalenie skóry wokół ust, oczu, odbytu i na dłoniach (acrodermatitis enteropathica), łysienie, słabe gojenie ran.',
+    H: '<b>Wokół otworów ciała.</b> Karboksylazy potrzebne do syntezy lipidów skóry → łuszczące zapalenie skóry wokół oczu, nosa i ust, łysienie.',
+    A: '<b>Rogowacenie.</b> Różnicowanie keratynocytów → hiperkeratoza mieszkowa (frynoderma, „gęsia skórka”), sucha skóra, kseroftalmia.',
+    C: '<b>Wybroczyny.</b> Hydroksylacja kolagenu → wybroczyny wokół mieszków włosowych, włosy korkociągowe, krwawiące dziąsła, słabe gojenie.',
+    K: '<b>Siniaki.</b> Zaburzenia krzepnięcia → siniaki i wybroczyny. To objaw skórny, choć przyczyna leży w hemostazie.',
+    B2: '<b>Usta.</b> Flawoproteiny szybko odnawiających się nabłonków → zajady, zapalenie kącików ust, purpurowy język, łojotokowe zapalenie skóry.',
+    B6: '<b>Usta / skóra.</b> Zajady, zapalenie języka, łojotokowe zapalenie skóry (często razem z niedoborem B2).',
+    B9: '<b>Usta.</b> Zapalenie języka (gładki, czerwony), zajady, owrzodzenia jamy ustnej.',
+    B12: '<b>Usta / pigment.</b> Zapalenie języka Huntera (gładki, „lakierowany”), przebarwienia grzbietów dłoni i kostek palców, wczesne siwienie.',
+    Cu: '<b>Włosy.</b> Tyrozynaza (melanina) i oksydaza lizylowa → odbarwione, łamliwe, skręcone włosy (pili torti), wiotka skóra.',
+    Fe: '<b>Paznokcie.</b> Koilonychia (łyżeczkowate paznokcie), zajady, wypadanie włosów, bladość.',
+    Se: '<b>Paznokcie / włosy.</b> Niedobór (np. żywienie pozajelitowe) → białe łożyska paznokci, odbarwienie włosów. Ale NADMIAR → łamliwe paznokcie, wypadanie włosów, czosnkowy oddech.',
+    B5: 'Słabe dowody. Zmiany skórne opisano u zwierząt. Dekspantenol w kremach działa miejscowo, to co innego niż niedobór.',
+  },
+  no: { D: 'Wit. D powstaje w skórze, ale jej niedobór nie daje typowych zmian skórnych (daje objawy kostne).', E: 'Niedobór wit. E daje objawy neurologiczne i hemolizę, a nie typowe zmiany skórne.' },
+  ex: 'Skóra, włosy i błony śluzowe odnawiają się najszybciej w organizmie, dlatego „zdradzają” niedobory jako pierwsze, często zanim pojawią się objawy ogólne.',
+  mem: '<b>Słońce:</b> PP · <b>otwory ciała:</b> Zn, H · <b>rogowacenie:</b> A · <b>wybroczyny:</b> C, K · <b>usta:</b> B2, B6, B9, B12, Fe · <b>włosy:</b> Cu, Zn, H · <b>paznokcie:</b> Fe, Se' },
+
+{ t: 'match', tp: 'S', q: 'Dopasuj <b>niedobór składnika</b> do <b>objawu na skórze, włosach lub paznokciach</b>.',
+  pairs: [
+    ['PP', 'naszyjnik Casala (zapalenie skóry wokół szyi)', 'Pelagra pojawia się na skórze odsłoniętej na słońce, a szyja jest często odsłonięta. Dlaczego słońce? Naprawa DNA po UV zużywa NAD⁺, który powstaje z niacyny (PP). Przy niedoborze niacyny skóra nie nadąża z naprawą (szczegóły w słowniczku pod hasłem PARP).'],
+    ['wit. C', 'włosy korkociągowe, wybroczyny wokół mieszków włosowych', 'Wadliwa keratyna i kolagen wokół mieszka. Kruche naczynia pękają.'],
+    ['Zn', 'acrodermatitis enteropathica (wokół ust, odbytu, na dłoniach)', 'Wrodzona mutacja transportera ZIP4 albo nabyty niedobór (żywienie pozajelitowe, alkohol).'],
+    ['wit. A', 'hiperkeratoza mieszkowa („gęsia skórka”)', 'Keratynocyty rogowacieją za wcześnie, a mieszki zatykają się rogowymi czopami.'],
+    ['B2', 'zajady i zapalenie kącików ust', 'Szybko odnawiający się nabłonek najszybciej odczuwa brak flawin.'],
+    ['Cu', 'odbarwione, łamliwe, skręcone włosy', 'Nie działa tyrozynaza (pigment) ani enzymy sieciujące keratynę.'],
+    ['Fe', 'koilonychia (łyżeczkowate paznokcie)', 'Paznokieć staje się cienki i wklęsły.'],
+    ['biotyna', 'łysienie po codziennym jedzeniu surowych białek jaj', 'Awidyna z surowego białka wiąże biotynę w jelicie.'],
+  ],
+  ex: 'Na kolokwium do każdego składnika podaj: mechanizm (enzym) + jeden charakterystyczny objaw skórny.',
+  mem: '<b>Casal = PP · korkociąg = C · wokół ust i odbytu = Zn · gęsia skórka = A · zajady = B2 · łyżeczka = Fe.</b>' },
+
+{ t: 'match', tp: 'S', q: 'Dlaczego skóra choruje? Dopasuj <b>składnik</b> do <b>mechanizmu</b>, przez który działa w skórze.',
+  pairs: [
+    ['PP', 'NAD⁺ (dinukleotyd nikotynamidoadeninowy) do naprawy DNA po UV (ultrafiolecie)', 'Niacyna (PP) to surowiec do NAD⁺. Enzym naprawczy PARP (polimeraza poli(ADP-rybozy)) przy każdym pęknięciu DNA rozcina NAD⁺ i z jego kawałków robi „flagę” przywołującą enzymy naprawcze. Mało niacyny → mało NAD⁺ → skóra po słońcu nie nadąża z naprawą.'],
+    ['wit. C', 'hydroksylaza prolilowa (kolagen)', 'Kolagen skóry i naczyń jest słaby, rany się nie goją, a dawne blizny mogą się otwierać.'],
+    ['Cu', 'tyrozynaza (melanina)', 'Tyrozyna → DOPA → melanina. Bez Cu włosy i skóra blakną.'],
+    ['wit. A', 'różnicowanie keratynocytów (przez RAR, receptory kwasu retinowego)', 'Dlatego retinoidy (izotretynoina) leczą trądzik i zaburzenia rogowacenia.'],
+    ['Zn', 'podziały komórek i gojenie (polimerazy, metaloproteinazy)', 'Ponad 300 enzymów zależnych od cynku, w tym potrzebne do proliferacji nabłonka.'],
+  ],
+  ex: 'Skóra potrzebuje: naprawy DNA (PP), kolagenu (C), pigmentu (Cu), prawidłowego rogowacenia (A) i podziałów komórek (Zn).',
+  mem: '<b>PP naprawia, C buduje, Cu barwi, A różnicuje, Zn dzieli.</b>' },
+
+{ t: 'sort', tp: 'S', q: 'Ten sam narząd, dwa kierunki. Czy objaw skórny wynika z <b>niedoboru</b> czy z <b>nadmiaru</b>?', buckets: ['niedobór', 'nadmiar'],
+  items: [['pelagra (PP)', 0, 'brak NAD⁺'], ['wybroczyny wokół mieszków (wit. C)', 0, 'słaby kolagen naczyń'], ['acrodermatitis (Zn)', 0, 'brak cynku'],
+    ['łamliwe paznokcie, wypadanie włosów (Se)', 1, 'selenoza, np. po źle dawkowanych suplementach'], ['pomarańczowa skóra (β-karoten)', 1, 'karotenodermia, niegroźna'], ['trądzik jodowy, jodzica (jod)', 1, 'wydalanie jodu przez gruczoły skóry'],
+    ['sucha, łuszcząca się skóra, pękające wargi (wit. A)', 1, 'hiperwitaminoza A, jak działanie niepożądane izotretynoiny'], ['hiperkeratoza mieszkowa (wit. A)', 0, 'brak różnicowania keratynocytów'],
+    ['zaczerwienienie twarzy (flush) po kwasie nikotynowym (PP)', 1, 'rozszerzenie naczyń przez prostaglandyny po dużej dawce niacyny']],
+  ex: 'Witamina A i niacyna dają objawy skórne w OBIE strony. Na kolokwium to dobra okazja, żeby pokazać, że znasz oba kierunki.',
+  mem: '<b>A: niedobór = rogowacenie, nadmiar = suchość i łuszczenie.</b> PP: niedobór = pelagra, nadmiar = flush.' },
+
+{ t: 'case', tp: 'S', q: 'Niemowlę po odstawieniu od piersi: sączące zapalenie skóry wokół ust i odbytu, łysienie, biegunka, rozdrażnienie. Jaki to niedobór?',
+  o: [['biotyny', 'Biotyna daje podobny obraz skóry, ale nie ma tu związku z odstawieniem od piersi.'],
+      ['cynku', 'Acrodermatitis enteropathica (mutacja transportera ZIP4). Mleko kobiece zawiera ligandy ułatwiające wchłanianie cynku, więc objawy wychodzą po jego odstawieniu.'],
+      ['witaminy A', 'Wit. A daje suchą, zrogowaciałą skórę, a nie sączące zmiany wokół otworów ciała.'], ['niacyny', 'Pelagra jest na skórze odsłoniętej na słońce, a nie wokół odbytu.']], a: 1,
+  ex: 'Triada: zapalenie skóry wokół otworów ciała + łysienie + biegunka. Leczenie cynkiem daje szybką, spektakularną poprawę.',
+  mem: '<b>Odstawienie od piersi + skóra wokół ust i odbytu = Zn.</b>' },
+
+{ t: 'case', tp: 'S', q: 'Kulturysta od roku codziennie pije koktajl z surowych białek jaj. Ma łysienie i łuszczące zapalenie skóry wokół oczu i ust. Jaki to niedobór?',
+  o: [['cynku', 'Cynk daje podobną skórę, ale tutaj jest klasyczny czynnik ryzyka innej witaminy.'],
+      ['biotyny (H)', 'Awidyna z surowego białka jaja wiąże biotynę w jelicie i blokuje jej wchłanianie. Gotowanie denaturuje awidynę.'],
+      ['witaminy B2', 'B2 daje zajady i zapalenie języka, a nie łysienie.'], ['witaminy C', 'Wit. C daje wybroczyny i krwawienia, a nie łysienie.']], a: 1,
+  ex: 'Nazwa „witamina H” pochodzi od niemieckiego „Haut”, czyli skóra.',
+  mem: '<b>Surowe jaja → awidyna → brak biotyny.</b>' },
+
+{ t: 'mc', tp: 'S', q: 'Pelagra to „4 × D”. Które D <b>nie</b> należy do pelagry?',
+  o: [['dermatitis (zapalenie skóry)', 'Należy: skóra odsłonięta na słońce.'], ['diarrhea (biegunka)', 'Należy: zanik i zapalenie błony śluzowej jelita.'], ['dementia (otępienie)', 'Należy: neurony bez NAD⁺.'],
+      ['dyspnea (duszność)', 'Nie należy. Czwarte D to death (śmierć), czyli skutek nieleczonej pelagry.']], a: 3,
+  ex: 'Pelagra była częsta tam, gdzie jedzono głównie kukurydzę: niacyna jest w niej związana (niedostępna), a mało jest tryptofanu, z którego organizm może ją robić.',
+  mem: '<b>4 D:</b> dermatitis, diarrhea, dementia, death.' },
+{ t: 'tf', tp: 'S', q: 'Prawda czy fałsz: karotenodermia (pomarańczowa skóra od dużej ilości marchwi) barwi twardówki na żółto.', a: false,
+  ex: 'Fałsz. W karotenodermii twardówki są BIAŁE, a pomarańczowe są dłonie, podeszwy i fałdy nosowo-wargowe. Żółte twardówki to żółtaczka (bilirubina). To prosty test przy łóżku chorego.',
+  mem: '<b>Białe oczy = karoten, żółte oczy = bilirubina.</b>' },
+{ t: 'tf', tp: 'S', q: 'Prawda czy fałsz: zmiany skórne w pelagrze pojawiają się głównie na skórze odsłoniętej na słońce.', a: true,
+  ex: 'Prawda. Typowe miejsca to grzbiety dłoni, przedramiona, twarz i szyja (naszyjnik Casala), symetrycznie i z ostrą granicą jak przy oparzeniu słonecznym. <b>Mechanizm krok po kroku:</b> (1) Promieniowanie UV (ultrafioletowe) uszkadza DNA keratynocytów. (2) Uszkodzenie wykrywa enzym naprawczy <b>PARP</b> (polimeraza poli(ADP-rybozy)). Działa jak „strażnik DNA”: przy pęknięciu nici rozcina cząsteczki <b>NAD⁺</b> i z ich kawałków (ADP-rybozy) buduje łańcuchy, które przywołują inne enzymy naprawcze. (3) <b>NAD⁺</b> (dinukleotyd nikotynamidoadeninowy) powstaje z <b>niacyny, czyli witaminy PP (B3)</b>, a częściowo z tryptofanu. Każda naprawa zużywa NAD⁺, więc trzeba go stale odtwarzać. (4) W pelagrze niacyny brakuje, więc NAD⁺ jest mało. Skóra naświetlona słońcem nie nadąża z naprawą, a komórki, które dodatkowo tracą NAD⁺ do produkcji energii, obumierają. Efekt: zapalenie skóry dokładnie tam, gdzie pada słońce. To najczęściej podawane wyjaśnienie, choć proponowano też inne (np. fotouczulające metabolity tryptofanu).',
+  mem: '<b>Pelagra = „oparzenie słoneczne”, które się nie goi.</b>' },
+{ t: 'odd', tp: 'S', q: 'Który niedobór <b>NIE</b> daje typowo zapalenia skóry wokół ust, nosa i odbytu z łysieniem?',
+  o: [['cynk', 'Daje: acrodermatitis enteropathica.'], ['biotyna', 'Daje: łuszczące zapalenie skóry wokół otworów ciała + łysienie.'],
+      ['B12', 'Nie daje. B12 daje raczej przebarwienia (grzbiety dłoni, kostki palców) i gładki język.'], ['obie pierwsze odpowiedzi dają taki obraz, więc to nie jest odpowiedź', 'Ta opcja tylko podsumowuje dwie pierwsze, a pytanie dotyczy składnika, który do nich nie pasuje.']], a: 2,
+  ex: 'Zn i biotyna dają niemal identyczny obraz skóry. Różnicuje je wywiad (odstawienie od piersi, żywienie pozajelitowe czy surowe jaja).', mem: '<b>Wokół otworów ciała + łysienie = Zn lub biotyna.</b>' },
+{ t: 'mc', tp: 'S', q: 'Chłopiec ma skręcone, łamliwe, odbarwione włosy (pili torti), drgawki, zwiotczenie mięśni i opóźniony rozwój. W chorobie Menkesa brakuje miedzi. Który enzym z tego powodu <b>nie barwi</b> włosów?',
+  o: [['tyrozynaza (zawiera Cu)', 'Tyrozynaza robi melaninę, więc bez miedzi włosy są jasne. Inne enzymy miedziowe tworzą mostki dwusiarczkowe w keratynie, więc bez nich włosy są kruche i skręcone.'],
+      ['hydroksylaza prolilowa (wit. C)', 'Ten enzym nie zależy od miedzi i nie robi pigmentu.'], ['PARP (polimeraza poli(ADP-rybozy), zużywa NAD⁺)', 'Ten enzym naprawia DNA, a nie barwi.'], ['karboksylaza (biotyna)', 'Ten enzym nie robi pigmentu.']], a: 0,
+  ex: 'Choroba Menkesa (mutacja ATP7A, sprzężona z chromosomem X) blokuje transport miedzi z jelita do tkanek. To przeciwieństwo choroby Wilsona (ATP7B), w której miedź się gromadzi.',
+  mem: '<b>Menkes = Mało miedzi</b> (kręcone włosy) · <b>Wilson = za dużo</b> (wątroba, mózg, pierścień Kaysera-Fleischera).' },
+
+// ===================== KRZEPNIĘCIE (pyt. 5) =====================
+{ t: 'recall', tp: 'H', need: 4,
+  q: 'Wpisz <b>witaminy i pierwiastki, od których zależy prawidłowe krzepnięcie i hemostaza</b> (zatrzymanie krwawienia), czyli takie, których niedobór, a czasem nadmiar, sprzyja krwawieniom. Potrzebujesz co najmniej <b>4</b>.',
+  hint: 'Hemostaza ma dwie warstwy: czynniki krzepnięcia w osoczu i ściana naczynia. Mnemotechnika: <b>„KaCE”</b>.',
+  ok: ['K', 'Ca', 'C', 'E', 'Cu'], weak: [],
+  tab: {
+    K: '<b>Osocze.</b> Kofaktor γ-karboksylazy: czynniki II, VII, IX, X oraz białka C i S dostają reszty Gla i mogą wiązać Ca²⁺. Niedobór → krwawienia, ↑ PT (czas protrombinowy).',
+    Ca: '<b>Osocze.</b> Czynnik IV: przyczepia czynniki z resztami Gla do fosfolipidów płytek. Dlatego cytrynian i EDTA (kwas wersenowy) w probówce zatrzymują krzepnięcie.',
+    C: '<b>Naczynie.</b> Kolagen ściany naczyń i podścieliska. Szkorbut → wybroczyny, krwawienia z dziąseł. Koagulogram w normie.',
+    E: '<b>Nadmiar.</b> Duże dawki z suplementów hamują karboksylację zależną od wit. K i agregację płytek → krwawienia, zwłaszcza u osób leczonych warfaryną.',
+    Cu: '<b>Naczynie.</b> Oksydaza lizylowa sieciuje kolagen i elastynę naczyń. W chorobie Menkesa naczynia są kręte i kruche.',
+  },
+  ex: 'Odpowiedź ma 2 piętra: hemostaza osoczowa (K, Ca) i naczyniowa (C, Cu) + interakcja (E w nadmiarze).',
+  mem: '<b>„KaCE”</b> = K, Ca, C, E (+ Cu jako bonus).' },
+
+{ t: 'match', tp: 'H', q: 'Dopasuj <b>składnik</b> do jego <b>roli w hemostazie</b>.',
+  pairs: [
+    ['wit. K', 'γ-karboksylacja czynników II, VII, IX, X', 'Bez reszt Gla czynniki nie wiążą wapnia i nie przyczepiają się do płytek. Powstają PIVKA (białka wytwarzane przy braku wit. K).'],
+    ['Ca', 'czynnik IV: „most” między czynnikami a płytkami', 'Ca²⁺ łączy reszty Gla z ujemnie naładowanymi fosfolipidami błony płytek.'],
+    ['wit. C', 'kolagen ściany naczynia (hemostaza naczyniowa)', 'Szczelne naczynie to pierwsza linia obrony przed krwawieniem.'],
+    ['wit. E (w nadmiarze)', 'antagonizm z wit. K i hamowanie agregacji płytek', 'Prawdopodobnie metabolit wit. E (chinon tokoferolu) hamuje γ-karboksylazę. Do tego wit. E słabo hamuje agregację płytek.'],
+  ],
+  ex: 'Wit. K i Ca działają razem: K tworzy „haczyki” (reszty Gla), a Ca na nich „wisi” i przyczepia czynnik do płytki.',
+  mem: '<b>K robi haczyki, Ca je łączy, C uszczelnia naczynie.</b>' },
+
+{ t: 'order', tp: 'H', q: 'Ułóż etapy <b>cyklu witaminy K</b> i zobacz, w którym miejscu działa warfaryna.',
+  steps: [
+    ['czynnik krzepnięcia z resztami glutaminianu (Glu)', 'Nieaktywny, nie wiąże Ca²⁺.'],
+    ['γ-karboksylaza + zredukowana wit. K (hydrochinon) + CO₂', 'Zachodzi w retikulum endoplazmatycznym hepatocytu.'],
+    ['czynnik ma reszty Gla i wiąże Ca²⁺, a wit. K utlenia się do epoksydu', 'Wit. K „zużyła się” na karboksylację.'],
+    ['VKORC1 (reduktaza epoksydu wit. K) odtwarza wit. K, a warfaryna to blokuje', 'Wit. K może wejść w kolejny obieg.'],
+  ],
+  ex: 'Warfaryna nie niszczy wit. K, tylko blokuje jej recykling. Dlatego duża dawka wit. K odwraca działanie warfaryny: dostarcza świeżej witaminy z pominięciem zablokowanego enzymu.',
+  mem: '<b>Glu → Gla dzięki K; warfaryna blokuje recykling (VKORC1).</b>' },
+
+{ t: 'mc', tp: 'H', q: 'Mnemotechnika „1972”: które czynniki krzepnięcia zależą od witaminy K?',
+  o: [['I, IX, VII, II', 'Czynnik I (fibrynogen) nie jest γ-karboksylowany. „1972” czytaj jako 10-9-7-2.'], ['X, IX, VII, II', '10 + 9 + 7 + 2 = „1972”, a do tego białka antykoagulacyjne C i S.'],
+      ['X, IX, VIII, II', 'Czynnik VIII (antyhemofilowy A) nie zależy od wit. K.'], ['XII, IX, VII, II', 'Czynnik XII (Hagemana) nie zależy od wit. K.']], a: 1,
+  ex: 'Białka C i S też zależą od wit. K. Na początku leczenia warfaryną białko C spada szybciej niż czynniki krzepnięcia, stąd ryzyko martwicy skóry i stosowanie heparyny jako pomostu.',
+  mem: '<b>1972 = X, IX, VII, II</b> + białka C i S.' },
+
+{ t: 'mc', tp: 'H', q: 'Który wynik badania zmienia się <b>najwcześniej</b> przy niedoborze witaminy K (albo na początku leczenia warfaryną)?',
+  o: [['APTT (czas częściowej tromboplastyny po aktywacji)', 'Wydłuża się później, bo czynniki IX i X mają dłuższy okres półtrwania.'],
+      ['PT/INR (czas protrombinowy / międzynarodowy współczynnik znormalizowany)', 'Czynnik VII ma najkrótszy okres półtrwania (ok. 4–6 h), spada pierwszy, a PT bada szlak zewnątrzpochodny z czynnikiem VII.'],
+      ['liczba płytek', 'Wit. K nie wpływa na liczbę płytek.'], ['fibrynogen', 'Fibrynogen (czynnik I) nie zależy od wit. K.']], a: 1,
+  ex: 'Dlatego leczenie warfaryną monitoruje się INR (opartym na PT).', mem: '<b>VII = najkrótszy, więc PT pierwszy.</b>' },
+
+{ t: 'case', tp: 'H', q: 'Sześciotygodniowe niemowlę karmione wyłącznie piersią. Rodzice odmówili „zastrzyków” po porodzie. Wymioty, napięte ciemię, PT (czas protrombinowy) bardzo wydłużony, płytki w normie. Rozpoznanie?',
+  o: [['hemofilia A', 'W hemofilii A wydłużony jest APTT, a nie PT, i nie ma związku z profilaktyką.'],
+      ['późna postać krwawienia z niedoboru witaminy K (VKDB)', 'Wit. K słabo przechodzi przez łożysko, mleko kobiece ma jej mało, a jelito noworodka nie ma jeszcze bakterii, które ją wytwarzają. Postać późna (2.–12. tydzień) często daje krwawienie do OUN (ośrodkowego układu nerwowego).'],
+      ['szkorbut', 'Szkorbut nie wydłuża PT, a niemowlęta karmione piersią rzadko na niego chorują.'], ['małopłytkowość', 'Płytki są w normie.']], a: 1,
+  ex: 'Profilaktyka: wit. K domięśniowo zaraz po urodzeniu. Tego właśnie „zastrzyku” odmówili rodzice.',
+  mem: '<b>Noworodek bez wit. K po porodzie + krwawienie = VKDB</b> (krwawienie z niedoboru wit. K).' },
+
+{ t: 'tf', tp: 'H', q: 'Prawda czy fałsz: w szkorbucie koagulogram (PT, APTT) jest zwykle prawidłowy.', a: true,
+  ex: 'Prawda. Krwawienia w szkorbucie wynikają z kruchości naczyń (słaby kolagen), a nie z braku czynników krzepnięcia. Dlatego koagulogram jest w normie, a krwawienia są.',
+  mem: '<b>Krwawienia + prawidłowy koagulogram → pomyśl o naczyniu</b> (C, Cu).' },
+{ t: 'tf', tp: 'H', q: 'Prawda czy fałsz: cytrynian sodu w niebieskiej probówce do koagulogramu zapobiega krzepnięciu, bo wiąże wapń.', a: true,
+  ex: 'Prawda. Bez Ca²⁺ (czynnika IV) kaskada stoi. W laboratorium dodaje się wapń z powrotem i mierzy czas do powstania skrzepu. Podobnie działa EDTA (kwas wersenowy) w probówce do morfologii.',
+  mem: '<b>Ca = czynnik IV</b>, bez niego krew nie krzepnie.' },
+{ t: 'tf', tp: 'H', q: 'Prawda czy fałsz: duże dawki witaminy E zmniejszają ryzyko krwawień u osób leczonych warfaryną.', a: false,
+  ex: 'Fałsz, jest odwrotnie. Wit. E w dużych dawkach hamuje karboksylację zależną od wit. K i agregację płytek, więc nasila działanie warfaryny i ryzyko krwawień.',
+  mem: '<b>Wit. E w nadmiarze = antagonista wit. K.</b>' },
+{ t: 'sort', tp: 'H', q: 'Którą „warstwę” hemostazy wspiera dany składnik: <b>czynniki krzepnięcia w osoczu</b> czy <b>ścianę naczynia</b>?', buckets: ['osoczowa (czynniki krzepnięcia)', 'naczyniowa (ściana naczynia)'],
+  items: [['wit. K', 0, 'γ-karboksylacja czynników II, VII, IX, X'], ['Ca', 0, 'czynnik IV'], ['wit. C', 1, 'hydroksylacja kolagenu'], ['Cu', 1, 'oksydaza lizylowa: kolagen i elastyna']],
+  ex: 'Niedobór „osoczowy” (K) daje nieprawidłowy koagulogram. Niedobór „naczyniowy” (C, Cu) daje krwawienia przy prawidłowym koagulogramie.',
+  mem: '<b>K, Ca = osocze · C, Cu = naczynie.</b>' },
+{ t: 'odd', tp: 'H', q: 'Który czynnik krzepnięcia <b>NIE</b> zależy od witaminy K?',
+  o: [['II (protrombina)', 'Zależy od wit. K.'], ['VII', 'Zależy od wit. K (najkrótszy okres półtrwania).'], ['VIII', 'Nie zależy. Czynnik VIII (antyhemofilowy A) powstaje głównie w śródbłonku i nie jest γ-karboksylowany.'], ['X', 'Zależy od wit. K.']], a: 2,
+  ex: 'Zależne od wit. K: II, VII, IX, X oraz białka C i S (mnemotechnika „1972”).', mem: '<b>VIII = hemofilia A, nie wit. K.</b>' },
+
+// ===================== CIĄŻA (pyt. 10) =====================
+{ t: 'recall', tp: 'P', need: 6,
+  q: 'Wpisz <b>witaminy i pierwiastki, o które trzeba szczególnie zadbać w ciąży</b>, bo ich niedobór (albo nadmiar) szkodzi matce lub dziecku. Potrzebujesz co najmniej <b>6</b>.',
+  hint: 'Pomyśl o tym, co płód buduje: cewa nerwowa, mózg, krew, kości. Do tego jedna witamina groźna w nadmiarze i jedna ważna dla noworodka. Mnemotechnika: <b>„Ciężarna: FIŻ DBA o K”</b>.',
+  ok: ['B9', 'I', 'Fe', 'D', 'Ca', 'B12', 'A', 'K', 'Zn', 'B1'], weak: [],
+  tab: {
+    B9: '<b>Cewa nerwowa.</b> Zamyka się ok. 28. dnia po zapłodnieniu, często zanim kobieta wie o ciąży. Niedobór → <b>wady cewy nerwowej</b> (rozszczep kręgosłupa, bezmózgowie). Suplementacja od okresu przed zajściem w ciążę.',
+    I: '<b>Mózg.</b> Hormony tarczycy matki, a potem płodu, sterują mielinizacją i migracją neuronów. Niedobór → <b>kretynizm</b>, niższe IQ (iloraz inteligencji). Zapotrzebowanie w ciąży rośnie.',
+    Fe: '<b>Krew.</b> Objętość krwi matki rośnie o ok. 50%, a płód buduje zapasy. Niedobór → <b>anemia</b>, poród przedwczesny, mała masa urodzeniowa.',
+    D: '<b>Kości.</b> Mineralizacja szkieletu płodu i zapasy noworodka. Niedobór → krzywica wrodzona i noworodkowa, hipokalcemia u noworodka.',
+    Ca: '<b>Kości.</b> Płód gromadzi ok. 30 g wapnia, głównie w III trymestrze. Przy niskim spożyciu suplementacja zmniejsza ryzyko stanu przedrzucawkowego.',
+    B12: '<b>Mózg.</b> Matka weganka bez suplementów → niemowlę karmione piersią z <b>zaburzeniami rozwoju neurologicznego</b> i anemią. Niedobór wiąże się też z wadami cewy nerwowej.',
+    A: '<b>NADMIAR!</b> Retinoidy (izotretynoina, duże dawki retinolu) są teratogenne: wady twarzoczaszki, serca, OUN (ośrodkowego układu nerwowego). β-karoten jest bezpieczny.',
+    K: '<b>Noworodek.</b> Słabo przechodzi przez łożysko → <b>krwawienie z niedoboru wit. K u noworodka</b> (VKDB). Profilaktyka: wit. K domięśniowo po urodzeniu.',
+    Zn: 'Wzrost i podziały komórek płodu. Niedobór → mała masa urodzeniowa. Dowody umiarkowane.',
+    B1: 'Niepowściągliwe wymioty ciężarnych (hyperemesis gravidarum) wyczerpują zapasy → <b>encefalopatia Wernickego</b>.',
+  },
+  no: { B6: 'B6 stosuje się objawowo na nudności w ciąży, ale jej niedobór nie jest typowym problemem ciąży.', Mg: 'Magnez bywa stosowany na skurcze łydek i w stanie przedrzucawkowym (dożylnie, jako lek), ale jego niedobór nie należy do kluczowych zagrożeń ciąży.' },
+  ex: 'Najważniejsza trójka w ciąży: foliany (cewa nerwowa), jod (mózg), żelazo (krew). Witamina A to wyjątek: tu groźny jest nadmiar.',
+  mem: '<b>„Ciężarna: FIŻ DBA o K”</b> = Foliany, I (jod), Żelazo, D, B12, A (nadmiar!), K (noworodek).' },
+
+{ t: 'match', tp: 'P', q: 'Rozszyfruj <b>„Ciężarna: FIŻ DBA o K”</b>: dopasuj literę do składnika.',
+  pairs: [['F', 'foliany (B9)', 'Cewa nerwowa, suplementacja przed zajściem w ciążę.'], ['I', 'jod', 'Mózg płodu (hormony tarczycy).'], ['Ż', 'żelazo', 'Rosnąca objętość krwi i zapasy płodu.'], ['D', 'witamina D', 'Kości płodu i zapasy noworodka.'],
+    ['B', 'B12', 'Zwłaszcza u matek wegetarianek i weganek.'], ['A', 'witamina A (uwaga: groźny nadmiar!)', 'Retinoidy są teratogenne.'], ['K', 'witamina K (noworodek)', 'Słabo przechodzi przez łożysko.']],
+  ex: '„FIŻ” to pewniaki wymagające aktywnej suplementacji lub kontroli. „DBA” to kości, B12 i ostrzeżenie przed nadmiarem A. „o K” to profilaktyka u noworodka.',
+  mem: 'Kolejność ważności: <b>F &gt; I &gt; Ż</b>, a potem reszta.' },
+
+{ t: 'match', tp: 'P', q: 'Dopasuj <b>zaburzenie u ciężarnej</b> do jego <b>skutku dla płodu lub noworodka</b>.',
+  pairs: [
+    ['niedobór B9', 'wady cewy nerwowej', 'Cewa zamyka się w 3.–4. tygodniu po zapłodnieniu.'],
+    ['niedobór jodu', 'kretynizm (niepełnosprawność intelektualna, karłowatość, głuchota)', 'Płód zależy od hormonów tarczycy matki, dopóki jego tarczyca nie zacznie działać (ok. 12.–20. tydzień).'],
+    ['niedobór Fe', 'poród przedwczesny, mała masa urodzeniowa', 'Anemia matki to gorsze utlenowanie łożyska.'],
+    ['nadmiar wit. A (retinoidów)', 'wady twarzoczaszki, serca i OUN (ośrodkowego układu nerwowego)', 'Kwas retinowy steruje genami HOX i rozwojem łuków skrzelowych.'],
+    ['niedobór wit. K', 'krwawienie u noworodka (VKDB)', 'Także leki przeciwpadaczkowe u matki (indukcja enzymów) zwiększają to ryzyko.'],
+    ['niedobór B12 (matka weganka)', 'zaburzenia rozwoju neurologicznego niemowlęcia', 'Mleko matki z niedoborem ma mało B12, a niemowlę rodzi się z małymi zapasami.'],
+  ],
+  ex: 'Okna wrażliwości: cewa nerwowa (pierwsze tygodnie), mózg i mielinizacja (cała ciąża i pierwsze lata życia).',
+  mem: '<b>B9 = cewa · jod = mózg · Fe = masa urodzeniowa · A = wady · K = krwawienie · B12 = rozwój.</b>' },
+
+{ t: 'mc', tp: 'P', q: 'Około którego dnia po zapłodnieniu zamyka się cewa nerwowa (tubus neuralis, neural tube)?',
+  o: [['7. dnia', 'Wtedy dopiero zachodzi implantacja.'], ['28. dnia', 'Ok. 4. tygodnia po zapłodnieniu (ok. 6. tygodnia od ostatniej miesiączki). Wiele kobiet jeszcze nie wie, że jest w ciąży.'],
+      ['70. dnia', 'Wtedy cewa jest już dawno zamknięta.'], ['140. dnia', 'To II trymestr, zdecydowanie za późno.']], a: 1,
+  ex: 'Dlatego kwas foliowy trzeba przyjmować już przed zajściem w ciążę, a nie dopiero po pozytywnym teście.',
+  mem: '<b>Cewa zamyka się ok. 28. dnia</b>, zanim kobieta wie o ciąży.' },
+
+{ t: 'mc', tp: 'P', q: 'Jaka jest standardowa dawka kwasu foliowego dla kobiety planującej ciążę (bez czynników ryzyka)?',
+  o: [['0,04 mg/d', 'Dziesięć razy za mało.'], ['0,4 mg/d', 'Standard, od okresu przed zajściem w ciążę do końca I trymestru (często dłużej).'],
+      ['4 mg/d', 'To dawka dla grupy wysokiego ryzyka (np. wada cewy nerwowej w poprzedniej ciąży, niektóre leki przeciwpadaczkowe).'], ['40 mg/d', 'Takich dawek się nie stosuje.']], a: 1,
+  ex: 'Zapamiętaj rząd wielkości: 0,4 mg standardowo, 10 razy więcej w grupie wysokiego ryzyka. Szczegóły schematów sprawdź w aktualnych rekomendacjach.',
+  mem: '<b>0,4 mg standard · 4–5 mg wysokie ryzyko.</b>' },
+
+{ t: 'tf', tp: 'P', q: 'Prawda czy fałsz: β-karoten w ciąży jest tak samo teratogenny jak izotretynoina.', a: false,
+  ex: 'Fałsz. Organizm zamienia β-karoten w wit. A tylko w potrzebnej ilości (konwersja jest regulowana), więc nie da się nim „przedawkować” retinolu. Teratogenne są retinoidy (izotretynoina, acytretyna) i duże dawki gotowego retinolu, np. z wątróbki lub suplementów.',
+  mem: '<b>Karoten bezpieczny, retinol w dużych dawkach nie.</b>' },
+{ t: 'tf', tp: 'P', q: 'Prawda czy fałsz: witamina K dobrze przechodzi przez łożysko, więc noworodek ma jej duże zapasy.', a: false,
+  ex: 'Fałsz. Wit. K słabo przechodzi przez łożysko, mleko kobiece ma jej mało, a jelito noworodka nie ma jeszcze bakterii, które ją wytwarzają. Dlatego każdy noworodek dostaje wit. K domięśniowo po urodzeniu.',
+  mem: '<b>Noworodek = niedobór wit. K z definicji.</b>' },
+{ t: 'case', tp: 'P', q: 'Ciężarna w 10. tygodniu od 4 tygodni wymiotuje po każdym posiłku i dostaje kroplówki z glukozą. Pojawiło się splątanie, oczopląs i chwiejny chód. Jaki to niedobór?',
+  o: [['folianów', 'Foliany nie dają ostrej encefalopatii.'], ['jodu', 'Niedobór jodu u matki nie daje ostrej triady neurologicznej.'],
+      ['tiaminy (B1)', 'Encefalopatia Wernickego. Zapasy tiaminy wystarczają tylko na kilka tygodni, a podawanie glukozy bez tiaminy przyspiesza objawy.'], ['żelaza', 'Żelazo nie daje oczopląsu ani splątania.']], a: 2,
+  ex: 'Każda kobieta z niepowściągliwymi wymiotami ciężarnych (hyperemesis gravidarum) dostająca płyny z glukozą powinna dostać też tiaminę.',
+  mem: '<b>Wymioty + glukoza + splątanie = B1.</b>' },
+{ t: 'odd', tp: 'P', q: 'Który składnik w ciąży jest groźny <b>głównie w nadmiarze</b>, a nie w niedoborze?',
+  o: [['kwas foliowy', 'Groźny jest niedobór (wady cewy nerwowej).'], ['jod', 'Groźny jest głównie niedobór (kretynizm). Nadmiar może zaburzyć tarczycę, ale to rzadsze.'],
+      ['witamina A (retinol, retinoidy)', 'Retinoidy regulują geny HOX i rozwój łuków skrzelowych, a ich nadmiar daje wady twarzoczaszki, serca i OUN.'], ['żelazo', 'Groźny jest niedobór (anemia).']], a: 2,
+  ex: 'Kobiety leczone izotretynoiną (trądzik) muszą stosować skuteczną antykoncepcję. To jeden z najsilniejszych znanych teratogenów.',
+  mem: '<b>Ciąża: wit. A = „nie przesadzaj”.</b>' },
+
+// ===================== WEGANIE (pyt. 23) =====================
+{ t: 'recall', tp: 'W', need: 6,
+  q: 'Wpisz <b>witaminy i pierwiastki, których niedobór grozi weganom</b> (dieta bez mięsa, ryb, nabiału i jaj). Potrzebujesz co najmniej <b>6</b>.',
+  hint: 'Pomyśl, czego dostarczają mięso, ryby, nabiał i jaja i czego rośliny mają mało albo w formie słabo przyswajalnej. Mnemotechnika: <b>„Weganin Bez Fajnego Zakupu Cały Dzień Idzie”</b>.',
+  ok: ['B12', 'Fe', 'Zn', 'Ca', 'D', 'I', 'B2', 'Se'], weak: [],
+  tab: {
+    B12: '<b>Najważniejszy!</b> Wytwarzają ją tylko bakterie, a w diecie jest tylko w produktach zwierzęcych. Weganin MUSI suplementować. Niedobór → anemia megaloblastyczna, objawy neurologiczne.',
+    Fe: 'Rośliny mają tylko żelazo niehemowe, które wchłania się słabiej, a fityniany (zboża, strączki) i polifenole (herbata) je wiążą. Pomaga wit. C do posiłku.',
+    Zn: 'Brak mięsa (najlepszego źródła), a fityniany wiążą cynk. Moczenie, kiełkowanie i fermentacja zmniejszają ilość fitynianów.',
+    Ca: 'Brak nabiału. Szczawiany (szpinak) wiążą wapń. Źródła: tofu wytrącane wapniem, napoje wzbogacane, jarmuż, brokuł.',
+    D: 'Naturalnych źródeł pokarmowych jest mało (ryby, żółtko), a wit. D z grzybów (D2) to za mało. Zimą w Polsce i tak suplementuje się prawie każdy.',
+    I: 'Główne źródła to ryby morskie, nabiał i sól jodowana. Weganin unikający soli jodowanej ma realne ryzyko. Algi zawierają bardzo zmienne, czasem nadmierne ilości jodu.',
+    B2: 'Duża część B2 w typowej diecie pochodzi z nabiału. Dowody umiarkowane.',
+    Se: 'Zawartość w roślinach zależy od gleby, a w Polsce gleby są ubogie w selen. Dowody umiarkowane.',
+  },
+  no: { B9: 'Foliany NIE są problemem: dieta roślinna jest w nie bogata (folium = liść). Wysokie foliany mogą wręcz maskować niedobór B12.', C: 'Wit. C nie jest problemem, bo rośliny to jej główne źródło.', K: 'Wit. K1 jest w zielonych warzywach liściastych, więc nie jest problemem.', E: 'Wit. E jest w olejach roślinnych i orzechach, więc nie jest problemem.' },
+  ex: 'Dwa mechanizmy ryzyka: (1) składnika nie ma w roślinach (B12, D, częściowo I) albo (2) jest, ale słabo się wchłania (Fe, Zn, Ca przez fityniany i szczawiany).',
+  mem: '<b>„Weganin Bez Fajnego Zakupu Cały Dzień Idzie”</b> = B12, Fe, Zn, Ca, D, I.' },
+
+{ t: 'match', tp: 'W', q: 'Rozszyfruj mnemotechnikę <b>„Weganin Bez Fajnego Zakupu Cały Dzień Idzie”</b>: dopasuj słowo do składnika.',
+  pairs: [['Bez', 'B12', 'Najważniejszy niedobór, zawsze suplementować.'], ['Fajnego', 'żelazo (Fe)', 'Tylko niehemowe, wiązane przez fityniany.'], ['Zakupu', 'cynk (Zn)', 'Fityniany, brak mięsa.'],
+    ['Cały', 'wapń (Ca)', 'Brak nabiału, szczawiany.'], ['Dzień', 'witamina D', 'Mało źródeł pokarmowych.'], ['Idzie', 'jod (I)', 'Brak ryb morskich i nabiału.']],
+  ex: '„Weganin” to tylko wstęp, a każde kolejne słowo kryje jeden składnik.', mem: '<b>B12, Fe, Zn, Ca, D, I.</b>' },
+
+{ t: 'match', tp: 'W', q: 'Dlaczego właśnie u wegan? Dopasuj <b>składnik</b> do <b>przyczyny niedoboru</b>.',
+  pairs: [
+    ['B12', 'występuje tylko w produktach zwierzęcych', 'Robią ją bakterie. Zwierzęta gromadzą ją w tkankach, a rośliny jej nie potrzebują.'],
+    ['Fe', 'tylko żelazo niehemowe, wiązane przez fityniany i polifenole', 'Żelazo hemowe (mięso) wchłania się w 15–35%, a niehemowe w kilku procentach.'],
+    ['Zn', 'fityniany wiążą cynk, brak mięsa', 'Ten sam „złodziej” co przy żelazie.'],
+    ['Ca', 'brak nabiału, szczawiany wiążą wapń', 'Ze szpinaku wchłania się bardzo mało wapnia.'],
+    ['wit. D', 'mało naturalnych źródeł pokarmowych (ryby, żółtko)', 'Synteza w skórze zimą w Polsce jest minimalna.'],
+    ['jod', 'brak ryb morskich i nabiału', 'Zostaje sól jodowana i ewentualnie suplement.'],
+  ],
+  ex: 'Fityniany (kwas fitynowy) ze zbóż i strączków to wspólny „złodziej” żelaza i cynku. Moczenie, kiełkowanie i zakwas (fermentacja) rozkładają je.',
+  mem: '<b>Brak w roślinach:</b> B12, D, (I) · <b>jest, ale się nie wchłania:</b> Fe, Zn, Ca.' },
+
+{ t: 'case', tp: 'W', q: 'Weganka, 30 lat, od 6 lat nie bierze suplementów. Mrowienie stóp. MCV (średnia objętość krwinki czerwonej) prawidłowe, foliany w surowicy wysokie. Co oznaczasz w pierwszej kolejności?',
+  o: [['ferrytynę', 'Ferrytyna przyda się później, ale nie wyjaśni mrowienia stóp.'], ['B12 i MMA (kwas metylomalonowy)', 'Objawy neurologiczne + dieta wegańska + wysokie foliany (maskowanie) wskazują na B12. MMA potwierdza niedobór tkankowy, nawet gdy stężenie B12 jest graniczne.'],
+      ['witaminę D', 'Niedobór wit. D nie daje parestezji (chyba że przez hipokalcemię, ale to rzadkie).'], ['TSH (hormon tyreotropowy)', 'Niedoczynność tarczycy też może dać neuropatię, ale tu B12 jest dużo bardziej prawdopodobna.']], a: 1,
+  ex: 'Zapasy B12 w wątrobie wystarczają na lata, więc objawy pojawiają się po kilku latach diety bez suplementów, jak tutaj.',
+  mem: '<b>Weganin + parestezje → B12 + MMA.</b>' },
+
+{ t: 'mc', tp: 'W', q: 'Dlaczego <b>wysokie spożycie folianów</b> u wegan bywa podstępne?',
+  o: [['foliany są toksyczne', 'Foliany z diety nie są toksyczne.'], ['maskują niedobór B12: poprawiają morfologię, a uszkodzenie nerwów postępuje', 'Foliany omijają pułapkę folianową, więc DNA się syntetyzuje i anemii nie ma. Mielina dalej cierpi z braku B12.'],
+      ['blokują wchłanianie żelaza', 'Foliany nie wpływają na wchłanianie żelaza.'], ['wywołują hiperkalcemię', 'Foliany nie wpływają na gospodarkę wapnia.']], a: 1,
+  ex: 'Dlatego u wegan nie można czekać na anemię jako „sygnał alarmowy” niedoboru B12.',
+  mem: '<b>Brak anemii ≠ brak niedoboru B12.</b>' },
+{ t: 'tf', tp: 'W', q: 'Prawda czy fałsz: bakterie jelitowe człowieka pokrywają zapotrzebowanie na B12, więc weganie nie potrzebują suplementów.', a: false,
+  ex: 'Fałsz. Bakterie wytwarzają B12 głównie w okrężnicy, czyli ZA miejscem wchłaniania (końcowy odcinek jelita krętego, ileum terminale, gdzie działa kompleks z czynnikiem wewnętrznym Castle’a). Ta B12 jest wydalana z kałem.',
+  mem: '<b>B12 z bakterii jest za daleko</b>, poza miejscem wchłaniania.' },
+{ t: 'tf', tp: 'W', q: 'Prawda czy fałsz: witamina C zjedzona razem z posiłkiem zwiększa wchłanianie żelaza z roślin.', a: true,
+  ex: 'Prawda. Wit. C redukuje Fe³⁺ do Fe²⁺ (tylko je przenosi DMT1, transporter metali dwuwartościowych 1) i tworzy z żelazem rozpuszczalne kompleksy, które fityniany słabiej wiążą. Herbata i kawa (polifenole) działają odwrotnie, więc lepiej pić je między posiłkami.',
+  mem: '<b>Papryka do soczewicy, herbata po godzinie.</b>' },
+{ t: 'tf', tp: 'W', q: 'Prawda czy fałsz: niejodowana sól himalajska jest dobrym źródłem jodu.', a: false,
+  ex: 'Fałsz. Zawiera śladowe ilości jodu. Dobre źródła to sól jodowana, ryby morskie i nabiał, a weganinowi zostaje głównie sól jodowana albo suplement.',
+  mem: '<b>„Naturalna” sól ≠ jod.</b>' },
+{ t: 'odd', tp: 'W', q: 'Na niedobór czego weganie <b>NIE</b> są typowo narażeni?',
+  o: [['B12', 'Narażeni: B12 jest tylko w produktach zwierzęcych.'], ['żelaza', 'Narażeni: mają tylko żelazo niehemowe.'], ['folianów', 'Nie są narażeni: dieta roślinna jest bogata w foliany (folium = liść).'], ['cynku', 'Narażeni: fityniany go wiążą.']], a: 2,
+  ex: 'Weganie mają zwykle WYŻSZE foliany niż osoby jedzące mięso, co może maskować niedobór B12.', mem: '<b>Foliany = liście</b>, więc weganom ich nie brakuje.' },
+{ t: 'sort', tp: 'W', q: 'Co <b>zwiększa</b>, a co <b>zmniejsza</b> wchłanianie żelaza z posiłku?', buckets: ['zwiększa ↑', 'zmniejsza ↓'],
+  items: [['witamina C', 0, 'redukuje Fe³⁺ do Fe²⁺'], ['mięso, ryby (czynnik mięsny)', 0, 'peptydy z mięsa poprawiają też wchłanianie żelaza niehemowego'], ['fermentacja, kiełkowanie', 0, 'rozkładają fityniany'],
+    ['fityniany (zboża, strączki)', 1, 'tworzą nierozpuszczalne kompleksy z żelazem'], ['herbata, kawa (polifenole)', 1, 'wiążą żelazo w jelicie'], ['wapń w tym samym posiłku', 1, 'konkuruje z żelazem o wchłanianie'], ['IPP (inhibitory pompy protonowej)', 1, 'mało kwasu solnego, więc żelazo nie redukuje się i gorzej rozpuszcza']],
+  ex: 'Praktycznie dla weganina: warzywa z wit. C do posiłku, herbata i kawa między posiłkami, suplement wapnia o innej porze niż posiłek bogaty w żelazo.',
+  mem: '<b>↑</b> wit. C, mięso, fermentacja · <b>↓</b> fityniany, herbata, Ca, IPP.' },
+
+// ===================== MIX =====================
+{ t: 'match', tp: 'A', q: 'Na kolokwium mogą pojawić się dawne nazwy. Dopasuj <b>oznaczenie witaminy</b> do jej <b>nazwy chemicznej</b>.',
+  pairs: [['PP', 'niacyna (B3)', 'PP = pellagra preventing (zapobiegająca pelagrze).'], ['H', 'biotyna (B7)', 'H = Haut, po niemiecku „skóra”.'], ['B12', 'kobalamina', 'Zawiera kobalt (Co) w pierścieniu korynowym.'], ['B9', 'foliany (kwas foliowy)', 'Folium = liść.'], ['B1', 'tiamina', 'Zawiera siarkę („thio”).'], ['B2', 'ryboflawina', 'Flavus = żółty. Mocz po suplemencie B2 jest intensywnie żółty.']],
+  ex: 'Etymologia pomaga zapamiętać rolę: PP zapobiega pelagrze, H dotyczy skóry, folium to liść.', mem: '<b>PP = niacyna · H = biotyna.</b>' },
+{ t: 'sort', tp: 'N', q: 'Mieszanka: <b>którego układu</b> (z pytań 1–3) dotyczy dany objaw lub badanie?', buckets: ['krew (anemia)', 'kości', 'układ nerwowy'],
+  items: [['syderoblasty pierścieniowe', 0, 'B6: żelazo w mitochondriach erytroblastów'], ['hipersegmentacja neutrofili', 0, 'B9 lub B12: zaburzona synteza DNA'], ['różaniec krzywiczy', 1, 'wit. D: rozrost chrząstki na połączeniach chrzęstno-żebrowych'], ['strefy Loosera (pasma przebudowy w RTG)', 1, 'osteomalacja (wit. D, fosfor)'],
+    ['zmiany w ciałach suteczkowatych (corpora mamillaria)', 2, 'B1: encefalopatia Wernickego'], ['dodatni objaw Romberga', 2, 'B12, Cu, E: sznury tylne']],
+  ex: 'Jeden objaw-wizytówka na niedobór pozwala szybko rozpoznać przypadek kliniczny na kolokwium.',
+  mem: '<b>Syderoblasty = B6 · różaniec = D · ciała suteczkowate = B1 · Romberg = B12.</b>' },
+);
+
+// ===== ZADANIA „JAK NA KOLOKWIUM”: składnik → funkcja biochemiczna → skutki niedoboru =====
+// fk/dk: grupy słów-kluczy [etykieta, [rdzenie]]; fnn/dn: ile grup trzeba trafić, żeby sugerować „dobrze”
+const KOL_PHRASE = { A: 'w erytropoezie (pyt. 1: anemia)', K: 'dla kości (pyt. 2)', N: 'dla układu nerwowego (pyt. 3)', S: 'dla skóry (pyt. 4)', H: 'w hemostazie, czyli krzepnięciu (pyt. 5)', P: 'w ciąży (pyt. 10)', W: 'u wegan (pyt. 23)' };
+const KOL = {
+A: {
+  B12: { fn: 'Koenzym dwóch enzymów: <b>syntazy metioniny</b> (jako metylokobalamina: homocysteina → metionina, a przy okazji odzyskanie THF, czyli tetrahydrofolianu, do syntezy tymidylanu i DNA) oraz <b>mutazy metylomalonylo-CoA</b> (jako adenozylokobalamina: metylomalonylo-CoA → sukcynylo-CoA).',
+    fk: [['syntaza metioniny / metionina', ['metionin']], ['homocysteina / metylacja', ['homocystein', 'metyl']], ['DNA / foliany (THF)', ['dna', 'thf', 'folian', 'tymid', 'nukleotyd']], ['mutaza metylomalonylo-CoA', ['metylomalon', 'mutaz', 'mma']]], fnn: 2,
+    df: '<b>Anemia megaloblastyczna</b> (makrocytoza, hipersegmentacja neutrofili) <b>+ objawy neurologiczne</b>: SCD (podostre złożone zwyrodnienie rdzenia), neuropatia, otępienie. ↑ MMA (kwas metylomalonowy) i homocysteina.',
+    dk: [['anemia megaloblastyczna / makrocytowa', ['megalobl', 'makrocyt']], ['objawy neurologiczne', ['neuro', 'rdzen', 'scd', 'mielin', 'neuropat', 'otepien', 'sznur']]] },
+  B9: { fn: 'Jako <b>THF (tetrahydrofolian)</b> przenosi jednostki jednowęglowe: 5,10-metyleno-THF daje węgiel do <b>syntezy tymidylanu (DNA)</b>, a formylo-THF do puryn. 5-metylo-THF remetyluje homocysteinę.',
+    fk: [['THF / jednostki jednowęglowe', ['thf', 'jednoweglow', 'metylen', 'formyl']], ['synteza DNA / tymidylanu / puryn', ['dna', 'tymid', 'puryn', 'nukleotyd']]],
+    df: '<b>Anemia megaloblastyczna bez objawów neurologicznych</b>, ↑ homocysteina, MMA w normie. W ciąży wady cewy nerwowej.',
+    dk: [['anemia megaloblastyczna', ['megalobl', 'makrocyt']], ['bez objawów neurologicznych / homocysteina', ['bez', 'homocyst', 'cew']]], dn: 1 },
+  B6: { fn: 'Jako <b>PLP (fosforan pirydoksalu)</b> jest kofaktorem <b>syntazy ALA</b> (kwasu δ-aminolewulinowego), pierwszego enzymu <b>syntezy hemu</b>: glicyna + sukcynylo-CoA → ALA.',
+    fk: [['PLP', ['plp', 'fosforan pirydoks']], ['synteza hemu / syntaza ALA', ['hem', 'hemu', 'ala', 'aminolewulin', 'porfir']]],
+    df: '<b>Anemia mikrocytowa, niedobarwliwa, syderoblastyczna</b> (syderoblasty pierścieniowe w szpiku).',
+    dk: [['mikrocytowa', ['mikrocyt', 'hipochrom', 'niedobarw']], ['syderoblastyczna', ['syderobl']]], dn: 1 },
+  Cu: { fn: 'Składnik <b>ferroksydaz</b>: ceruloplazminy (osocze) i hefajstyny (enterocyt). Utleniają <b>Fe²⁺ → Fe³⁺</b>, dzięki czemu żelazo może opuścić komórkę i związać się z transferyną.',
+    fk: [['ferroksydazy / ceruloplazmina / hefajstyna', ['ferroksyd', 'ceruloplazm', 'hefajst']], ['utlenianie żelaza / transport / transferyna', ['utlen', 'fe3', 'transferyn', 'transport', 'mobiliz', 'uwaln']]],
+    df: '<b>Anemia oporna na leczenie żelazem</b> (mikro- lub normocytowa) <b>+ neutropenia</b>, często mielopatia jak przy niedoborze B12.',
+    dk: [['anemia oporna na żelazo', ['opor', 'anemi', 'niedokrw']], ['neutropenia', ['neutrop', 'leukop']]], dn: 1 },
+  C: { fn: '<b>Redukuje Fe³⁺ → Fe²⁺</b> w świetle jelita (DMT1, transporter metali dwuwartościowych 1, przenosi tylko Fe²⁺) i tworzy z żelazem rozpuszczalne kompleksy, więc <b>zwiększa wchłanianie żelaza niehemowego</b>.',
+    fk: [['redukcja Fe³⁺ → Fe²⁺', ['redukc', 'fe2', 'dwuwartosc']], ['wchłanianie żelaza niehemowego', ['wchlan', 'niehem', 'absorp']]],
+    df: '<b>Niedokrwistość z niedoboru żelaza</b> (mikrocytowa). W szkorbucie dochodzi utrata krwi z krwawień (dziąsła, wybroczyny).',
+    dk: [['niedobór żelaza / mikrocytowa', ['zelaz', 'mikrocyt']], ['szkorbut / krwawienia', ['szkorbut', 'krwaw', 'wybrocz']]], dn: 1 },
+  E: { fn: 'Lipofilny <b>antyoksydant błon</b>: przerywa łańcuchową <b>peroksydację lipidów</b> (wychwytuje rodniki) i chroni wielonienasycone kwasy tłuszczowe błony erytrocytu.',
+    fk: [['antyoksydant', ['antyoks', 'rodnik', 'utlen']], ['błony / lipidy / peroksydacja', ['blon', 'lipid', 'peroksyd']]],
+    df: '<b>Anemia hemolityczna</b> (kruche erytrocyty), typowo u <b>wcześniaków</b> i w zespołach złego wchłaniania tłuszczów.',
+    dk: [['hemoliza', ['hemoli']], ['wcześniaki / złe wchłanianie tłuszczów', ['wczesn', 'tluszcz', 'wchlan', 'noworod']]], dn: 1 },
+  A: { fn: '<b>Kwas retinowy</b> (przez RAR, receptory kwasu retinowego) reguluje geny metabolizmu żelaza i erytropoezę. Umożliwia <b>mobilizację żelaza z zapasów</b> (ferrytyny) i jego transport do szpiku.',
+    fk: [['mobilizacja / transport żelaza z zapasów', ['mobiliz', 'zapas', 'ferryt', 'transport', 'uwaln']], ['regulacja erytropoezy / kwas retinowy', ['erytropo', 'retinow', 'rar', 'gen', 'roznicow']]], fnn: 1,
+    df: '<b>Anemia</b> (zwykle mikrocytowa) z <b>niskim żelazem w surowicy mimo zapasów</b>. Słabo reaguje na samo żelazo, ustępuje po wit. A.',
+    dk: [['anemia', ['anemi', 'niedokrw']], ['niskie żelazo mimo zapasów / oporna na żelazo', ['zapas', 'opor', 'mikrocyt', 'ferryt']]], dn: 1 },
+},
+K: {
+  D: { fn: '<b>Kalcytriol</b> (1,25(OH)₂D) działa przez <b>VDR</b> (receptor witaminy D) jak hormon steroidowy: <b>↑ wchłanianie Ca i P w jelicie</b>, razem z PTH (parathormonem) reguluje kość i nerkę, umożliwia <b>mineralizację osteoidu</b>.',
+    fk: [['wchłanianie Ca i P', ['wchlan', 'absorp']], ['VDR / kalcytriol / hormon', ['vdr', 'receptor', 'kalcytriol', 'hormon']], ['mineralizacja', ['mineraliz', 'osteoid', 'hydroksyapat']]],
+    df: '<b>Krzywica</b> u dzieci, <b>osteomalacja</b> u dorosłych (niezmineralizowany osteoid), hipokalcemia, wtórna nadczynność przytarczyc.',
+    dk: [['krzywica', ['krzywic', 'rachit']], ['osteomalacja', ['osteomal']]] },
+  K: { fn: 'Kofaktor <b>γ-karboksylazy</b>: zamienia reszty glutaminianu (Glu) w <b>Gla</b> w <b>osteokalcynie</b> i MGP (białku Gla macierzy), dzięki czemu wiążą one wapń i hydroksyapatyt.',
+    fk: [['γ-karboksylacja / Gla', ['karboksyl', 'gla']], ['osteokalcyna / MGP', ['osteokalc', 'mgp']]],
+    df: 'Niekarboksylowana osteokalcyna. W badaniach obserwacyjnych związek z <b>niższą gęstością kości i złamaniami</b> (efekt suplementacji niepewny). Warfaryna w I trymestrze → <b>embriopatia</b> (hipoplazja nosa, punktowate zwapnienia nasad).',
+    dk: [['osteoporoza / złamania / niska gęstość', ['osteopor', 'zlaman', 'gestos', 'osteopen']], ['embriopatia warfarynowa', ['embrio', 'warfaryn']]], dn: 1 },
+  C: { fn: 'Kofaktor <b>hydroksylazy prolilowej i lizylowej</b> (utrzymuje Fe²⁺ w enzymie), więc hydroksyprolina i hydroksylizyna stabilizują potrójną helisę <b>kolagenu typu I</b>, czyli macierzy kości.',
+    fk: [['hydroksylacja proliny i lizyny', ['hydroksyl', 'prolin', 'lizyn']], ['kolagen', ['kolagen']]],
+    df: '<b>Szkorbut</b>: osteopenia, <b>krwiaki podokostnowe</b>, bóle kości, u dzieci zaburzenia wzrostu i bolesny różaniec szkorbutowy.',
+    dk: [['szkorbut', ['szkorbut']], ['osteopenia / krwiaki podokostnowe', ['osteopen', 'osteopor', 'krwiak', 'okostn', 'zlaman']]], dn: 1 },
+  Cu: { fn: 'Kofaktor <b>oksydazy lizylowej</b>, która tworzy <b>wiązania krzyżowe (sieciuje) kolagen i elastynę</b>.',
+    fk: [['oksydaza lizylowa', ['oksydaz', 'lizyl']], ['sieciowanie kolagenu / elastyny', ['sieciow', 'krzyzow', 'kolagen', 'elastyn']]],
+    df: '<b>Osteoporoza, złamania</b>, deformacje kości (choroba Menkesa, niedobór nabyty).',
+    dk: [['osteoporoza / złamania', ['osteopor', 'zlaman', 'krucho', 'osteopen', 'deform']]], dn: 1 },
+  Mg: { fn: 'Ok. 60% Mg ustroju jest <b>w kości</b> (w krysztale). Mg jest niezbędny do <b>wydzielania i działania PTH</b> (parathormonu) oraz do aktywacji wit. D.',
+    fk: [['PTH', ['pth', 'parathorm']], ['składnik kości / aktywacja wit. D', ['kosc', 'minera', 'krysztal', 'hydroksyap', 'witamin']]], fnn: 1,
+    df: '<b>Hipokalcemia oporna na wapń i wit. D</b> (czynnościowa niedoczynność przytarczyc), przewlekle osteoporoza.',
+    dk: [['hipokalcemia', ['hipokalc']], ['osteoporoza / zaburzenia PTH', ['osteopor', 'pth', 'przytarc']]], dn: 1 },
+  F: { fn: 'Zastępuje grupy OH⁻ w hydroksyapatycie, tworząc <b>fluoroapatyt</b>, który jest twardszy i mniej rozpuszczalny w kwasach (szkliwo, kość).',
+    fk: [['fluoroapatyt / zamiast OH⁻', ['fluoroapat', 'apatyt']], ['odporność na kwasy / próchnica / twardość', ['kwas', 'prochnic', 'tward', 'szkliw']]], fnn: 1,
+    df: 'Niedobór: większe ryzyko <b>próchnicy</b>. Nadmiar: <b>fluoroza</b> zębów (plamy szkliwa) i szkieletowa (kość gęsta, ale krucha).',
+    dk: [['próchnica', ['prochnic']], ['fluoroza (nadmiar)', ['fluoroz']]], dn: 1 },
+  A: { fn: '<b>Kwas retinowy</b> (przez RAR, receptory kwasu retinowego) reguluje różnicowanie i aktywność <b>osteoblastów i osteoklastów</b> oraz wzrost kości.',
+    fk: [['osteoblasty / osteoklasty', ['osteobl', 'osteokl']], ['kwas retinowy / RAR / geny', ['retinow', 'rar', 'gen', 'roznicow', 'wzrost']]], fnn: 1,
+    df: 'Niedobór: zahamowanie wzrostu kości. <b>Nadmiar</b>: ↑ resorpcja, osteoporoza, <b>↑ ryzyko złamań</b> (np. biodra).',
+    dk: [['nadmiar → resorpcja / złamania', ['nadmiar', 'resorp', 'zlaman', 'osteopor']], ['niedobór → zahamowanie wzrostu', ['wzrost']]], dn: 1 },
+},
+N: {
+  B1: { fn: 'Jako <b>TPP (pirofosforan tiaminy)</b> jest kofaktorem <b>PDH</b> (dehydrogenazy pirogronianowej), dehydrogenazy α-ketoglutaranu i transketolazy, czyli <b>metabolizmu glukozy</b>, głównego źródła energii neuronu.',
+    fk: [['TPP', ['tpp', 'pirofosforan']], ['PDH / α-ketoglutaran / transketolaza', ['pdh', 'pirogron', 'ketoglutar', 'transketol']], ['energia z glukozy', ['energ', 'glukoz', 'atp']]],
+    df: '<b>Encefalopatia Wernickego</b> (splątanie, oczopląs, ataksja), <b>zespół Korsakowa</b>, suchy beri-beri (neuropatia obwodowa).',
+    dk: [['Wernicke / Korsakow', ['wernick', 'korsakow']], ['beri-beri / neuropatia', ['beri', 'neuropat']]], dn: 1 },
+  B6: { fn: 'Jako <b>PLP (fosforan pirydoksalu)</b> jest kofaktorem <b>dekarboksylaz</b>: synteza <b>GABA</b> (z glutaminianu), dopaminy, serotoniny, histaminy.',
+    fk: [['PLP', ['plp', 'fosforan pirydoks']], ['dekarboksylacja / neuroprzekaźniki', ['dekarboks', 'gaba', 'dopamin', 'serotonin', 'neuroprzek']]],
+    df: '<b>Drgawki</b> (brak GABA: niemowlęta, izoniazyd), <b>neuropatia obwodowa</b>, depresja. Nadmiar też daje neuropatię czuciową.',
+    dk: [['drgawki', ['drgaw']], ['neuropatia', ['neuropat']]], dn: 1 },
+  B12: { fn: '<b>Mutaza metylomalonylo-CoA</b> (prawidłowe kwasy tłuszczowe <b>mieliny</b>) oraz <b>syntaza metioniny</b> → SAM (S-adenozylometionina), główny dawca grup metylowych.',
+    fk: [['mielina', ['mielin']], ['mutaza metylomalonylo-CoA / MMA', ['metylomalon', 'mutaz', 'mma']], ['syntaza metioniny / SAM / metylacja', ['metionin', 'sam', 'metyl']]],
+    df: '<b>SCD (podostre złożone zwyrodnienie rdzenia)</b>: sznury tylne + drogi piramidowe. Do tego neuropatia obwodowa, otępienie, zaburzenia psychiczne, także <b>bez anemii</b>.',
+    dk: [['SCD / sznury tylne / rdzeń', ['scd', 'sznur', 'rdzen', 'zwyrodn']], ['neuropatia / otępienie', ['neuropat', 'otepien', 'demen', 'parestez', 'psych']]], dn: 1 },
+  E: { fn: '<b>Antyoksydant</b> chroniący lipidy <b>błon długich aksonów</b> (sznury tylne, nerwy obwodowe) i siatkówki przed peroksydacją.',
+    fk: [['antyoksydant', ['antyoks', 'rodnik', 'peroksyd']], ['błony aksonów', ['blon', 'akson', 'neuron', 'lipid']]],
+    df: '<b>Ataksja</b> rdzeniowo-móżdżkowa, <b>neuropatia obwodowa</b>, utrata czucia głębokiego, retinopatia.',
+    dk: [['ataksja', ['ataks']], ['neuropatia / czucie głębokie', ['neuropat', 'czuci', 'retinop']]], dn: 1 },
+  Mg: { fn: '<b>Blokuje kanał receptora NMDA</b> (N-metylo-D-asparaginianowego) w spoczynku i konkuruje z Ca²⁺ o kanały wapniowe, więc <b>zmniejsza pobudliwość</b> neuronów.',
+    fk: [['receptor NMDA', ['nmda', 'glutamin']], ['kanały wapniowe / pobudliwość', ['wapn', 'pobudliw', 'kanal']]], fnn: 1,
+    df: '<b>Nadpobudliwość</b>: drżenie, <b>tężyczka</b>, <b>drgawki</b>, zaburzenia rytmu serca. Często razem z hipokalcemią i hipokaliemią.',
+    dk: [['drgawki / tężyczka / drżenie', ['drgaw', 'tezycz', 'drzen', 'skurcz', 'pobudliw']]], dn: 1 },
+  I: { fn: 'Składnik <b>hormonów tarczycy</b> (T4, T3), które sterują <b>mielinizacją</b>, migracją i różnicowaniem neuronów płodu i niemowlęcia.',
+    fk: [['hormony tarczycy', ['tarczyc', 't3', 't4', 'tyrok']], ['mielinizacja / rozwój mózgu', ['mielin', 'rozwoj', 'migrac', 'mozg']]],
+    df: 'W ciąży i u niemowląt: <b>kretynizm</b> (niepełnosprawność intelektualna, głuchota, spastyczność), niższe IQ (iloraz inteligencji).',
+    dk: [['kretynizm / niepełnosprawność intelektualna', ['kretyn', 'intelekt', 'iq', 'uposledz', 'niepelnospr']]], dn: 1 },
+  Fe: { fn: 'Kofaktor <b>hydroksylazy tyrozynowej</b> (dopamina, noradrenalina) i tryptofanowej (serotonina). Potrzebne do <b>mielinizacji</b> i pracy mitochondriów.',
+    fk: [['hydroksylaza tyrozynowa / neuroprzekaźniki', ['hydroksylaz', 'tyrozyn', 'dopamin', 'serotonin', 'neuroprzek']], ['mielinizacja', ['mielin', 'rozwoj']]], fnn: 1,
+    df: '<b>Zaburzenia rozwoju poznawczego</b> u dzieci, <b>zespół niespokojnych nóg</b>, męczliwość, gorsza koncentracja.',
+    dk: [['rozwój poznawczy u dzieci', ['rozwoj', 'poznaw', 'dziec']], ['zespół niespokojnych nóg', ['niespokoj']]], dn: 1 },
+  Cu: { fn: 'Kofaktor <b>β-hydroksylazy dopaminowej</b> (dopamina → noradrenalina), oksydazy cytochromu c (energia) i enzymów potrzebnych do mieliny.',
+    fk: [['β-hydroksylaza dopaminowa / noradrenalina', ['hydroksylaz', 'noradren', 'dopamin']], ['oksydaza cytochromu c / mielina', ['cytochrom', 'mielin', 'oddech']]], fnn: 1,
+    df: '<b>Mielopatia</b> podobna do SCD z niedoboru B12 (ataksja czuciowa, spastyczność), neuropatia. Wrodzona <b>choroba Menkesa</b>: drgawki, zwyrodnienie OUN (ośrodkowego układu nerwowego).',
+    dk: [['mielopatia (jak B12)', ['mielopat', 'rdzen', 'b12', 'ataks', 'sznur']], ['choroba Menkesa', ['menkes']]], dn: 1 },
+},
+S: {
+  PP: { fn: 'Jako <b>NAD⁺/NADP⁺</b> (dinukleotyd nikotynamidoadeninowy) przenosi elektrony w metabolizmie energetycznym i jest substratem <b>PARP</b> (polimerazy poli(ADP-rybozy)), czyli naprawy DNA po UV.',
+    fk: [['NAD⁺', ['nad']], ['naprawa DNA / PARP / UV', ['dna', 'parp', 'napraw', 'uv', 'slonc']]],
+    df: '<b>Pelagra</b>: symetryczne zapalenie skóry na miejscach odsłoniętych na słońce (<b>naszyjnik Casala</b>) + biegunka + otępienie.',
+    dk: [['pelagra', ['pelagr']], ['zapalenie skóry na słońcu / Casal', ['casal', 'slonc', 'odslon', 'dermat', 'zapal']]], dn: 1 },
+  Zn: { fn: 'Kofaktor ponad 300 enzymów (polimerazy DNA i RNA, metaloproteinazy, dysmutaza ponadtlenkowa), więc odpowiada za <b>podziały komórek naskórka i gojenie ran</b>.',
+    fk: [['podziały komórek / synteza DNA', ['podzial', 'dna', 'prolifer', 'polimeraz']], ['gojenie ran', ['gojen']]], fnn: 1,
+    df: '<b>Acrodermatitis enteropathica</b> (zapalenie skóry wokół ust, oczu, odbytu, na dłoniach), <b>łysienie</b>, złe gojenie ran, biegunka.',
+    dk: [['acrodermatitis / wokół otworów ciała', ['acroderm', 'otwor', 'ust', 'odbyt', 'dermat']], ['łysienie / gojenie', ['lysien', 'wlos', 'gojen']]], dn: 1 },
+  C: { fn: 'Kofaktor <b>hydroksylaz prolilowej i lizylowej</b>, więc <b>kolagen</b> skóry i naczyń jest stabilny. Do tego działa jako antyoksydant.',
+    fk: [['hydroksylacja proliny i lizyny', ['hydroksyl', 'prolin', 'lizyn']], ['kolagen', ['kolagen']]],
+    df: '<b>Szkorbut</b>: <b>wybroczyny okołomieszkowe</b>, <b>włosy korkociągowe</b>, krwawiące dziąsła, złe gojenie ran.',
+    dk: [['wybroczyny / krwawienia', ['wybrocz', 'krwaw', 'siniak', 'dziasl']], ['włosy korkociągowe / złe gojenie / szkorbut', ['korkoc', 'gojen', 'szkorbut']]], dn: 1 },
+  A: { fn: '<b>Kwas retinowy</b> (przez RAR) reguluje <b>różnicowanie i rogowacenie keratynocytów</b> oraz nabłonków.',
+    fk: [['różnicowanie keratynocytów / nabłonków', ['roznicow', 'keratynoc', 'nablon', 'rogow']], ['kwas retinowy / RAR', ['retinow', 'rar']]], fnn: 1,
+    df: '<b>Hiperkeratoza mieszkowa</b> (frynoderma), sucha, łuszcząca się skóra, kseroftalmia. Nadmiar: suchość, pękanie warg, łuszczenie.',
+    dk: [['hiperkeratoza / nadmierne rogowacenie', ['hiperkerat', 'rogow', 'frynod']], ['suchość skóry / kseroftalmia', ['such', 'kseroft', 'luszcz']]], dn: 1 },
+  H: { fn: 'Koenzym <b>karboksylaz</b> (karboksylazy acetylo-CoA, czyli syntezy kwasów tłuszczowych; pirogronianowej; propionylo-CoA), więc odpowiada za <b>lipidy naskórka</b>.',
+    fk: [['karboksylazy', ['karboksyl']], ['synteza kwasów tłuszczowych / lipidy skóry', ['tluszcz', 'lipid']]], fnn: 1,
+    df: '<b>Łysienie</b> i łuszczące <b>zapalenie skóry wokół oczu, nosa i ust</b>. Przyczyny: surowe białko jaja (awidyna), żywienie pozajelitowe, niedobór biotynidazy.',
+    dk: [['łysienie', ['lysien', 'wlos']], ['zapalenie skóry wokół otworów ciała', ['dermat', 'zapal', 'ust', 'ocz', 'luszcz']]], dn: 1 },
+  B2: { fn: 'Jako <b>FAD/FMN</b> (koenzymy flawinowe) przenosi elektrony w reakcjach <b>redoks</b>, czyli energetyka szybko odnawiających się nabłonków. Aktywuje też B6 i foliany.',
+    fk: [['FAD / FMN / flawiny', ['fad', 'fmn', 'flawin']], ['redoks / energia', ['redoks', 'elektron', 'energ', 'utlen']]], fnn: 1,
+    df: '<b>Zajady</b> i zapalenie kącików ust, <b>zapalenie języka</b> (język purpurowy), łojotokowe zapalenie skóry.',
+    dk: [['zajady / kąciki ust', ['zajad', 'kacik', 'warg']], ['zapalenie języka / łojotokowe zapalenie skóry', ['jezyk', 'lojot']]], dn: 1 },
+  Cu: { fn: 'Kofaktor <b>tyrozynazy</b> (synteza <b>melaniny</b>) i oksydazy lizylowej (sieciowanie kolagenu i elastyny).',
+    fk: [['tyrozynaza / melanina', ['tyrozynaz', 'melanin', 'pigment']], ['oksydaza lizylowa / kolagen', ['oksydaz', 'lizyl', 'kolagen', 'elastyn']]], fnn: 1,
+    df: '<b>Odbarwione, łamliwe, skręcone włosy</b> (pili torti), jasna skóra, wiotka skóra (choroba Menkesa).',
+    dk: [['odbarwienie / brak pigmentu', ['odbarw', 'depigm', 'jasn', 'pigment']], ['łamliwe, skręcone włosy', ['wlos', 'skrec', 'lamliw', 'menkes']]], dn: 1 },
+},
+H: {
+  K: { fn: 'Kofaktor <b>γ-karboksylazy</b>: zamienia Glu → <b>Gla</b> w <b>czynnikach II, VII, IX, X</b> oraz białkach C i S. Reszty Gla wiążą Ca²⁺ i fosfolipidy płytek.',
+    fk: [['γ-karboksylacja / Gla', ['karboksyl', 'gla']], ['czynniki II, VII, IX, X', ['czynnik', 'protrombin', 'vii', 'ix', '1972']]],
+    df: '<b>Skaza krwotoczna</b>: krwawienia, <b>wydłużony PT/INR</b> (czas protrombinowy, najwcześniej przez czynnik VII), potem APTT. U noworodka VKDB (krwawienie z niedoboru wit. K).',
+    dk: [['krwawienia', ['krwaw', 'skaz', 'siniak']], ['wydłużony PT / INR', ['pt', 'inr', 'protromb', 'aptt']]], dn: 1 },
+  Ca: { fn: '<b>Czynnik IV</b> krzepnięcia: łączy reszty Gla czynników zależnych od wit. K z <b>fosfolipidami płytek</b>. Jest potrzebny w kilku etapach kaskady i przy aktywacji płytek.',
+    fk: [['czynnik IV', ['iv', 'czynnik']], ['łączy czynniki z fosfolipidami płytek / reszty Gla', ['plyt', 'fosfolipid', 'gla', 'kaskad']]], fnn: 1,
+    df: 'Pułapka: <b>niedobór wapnia w praktyce nie daje krwawień</b>, bo nawet przy hipokalcemii (która daje tężyczkę) jest go dość dla kaskady. Znaczenie praktyczne: <b>cytrynian i EDTA</b> (kwas wersenowy) w probówce wiążą wapń i blokują krzepnięcie.',
+    dk: [['niedobór nie daje krwawień (tężyczka)', ['nie da', 'nie powod', 'nie wywol', 'tezycz', 'nie ma wplyw']], ['cytrynian / EDTA w probówce', ['cytryn', 'edta', 'probow']]], dn: 1 },
+  C: { fn: 'Kofaktor <b>hydroksylaz prolilowej i lizylowej</b>, więc buduje <b>kolagen ściany naczyń</b> i tkanki okołonaczyniowej (hemostaza naczyniowa).',
+    fk: [['hydroksylacja / kolagen', ['hydroksyl', 'kolagen', 'prolin']], ['ściana naczyń', ['naczyn']]],
+    df: '<b>Szkorbut</b>: wybroczyny okołomieszkowe, krwawienia z dziąseł, krwiaki, a <b>koagulogram jest prawidłowy</b>.',
+    dk: [['krwawienia / wybroczyny', ['krwaw', 'wybrocz', 'krwiak', 'siniak']], ['koagulogram prawidłowy', ['prawidl', 'norm', 'koagul']]], dn: 1 },
+  E: { fn: 'Antyoksydant. W dużych dawkach (prawdopodobnie przez metabolit, chinon tokoferolu) <b>hamuje γ-karboksylację zależną od wit. K</b> i słabo hamuje <b>agregację płytek</b>.',
+    fk: [['antagonizm z wit. K / karboksylacja', ['karboksyl', 'wit k', 'witaminy k', 'witamina k', 'antagon']], ['agregacja płytek', ['plyt', 'agreg']]], fnn: 1,
+    df: 'Niedobór nie zaburza krzepnięcia. <b>NADMIAR</b> (suplementy) daje skłonność do krwawień i <b>nasila działanie warfaryny</b>.',
+    dk: [['nadmiar → krwawienia', ['nadmiar', 'krwaw']], ['interakcja z warfaryną', ['warfaryn', 'antykoag']]], dn: 1 },
+},
+P: {
+  B9: { fn: 'Jako <b>THF</b> dostarcza jednostek jednowęglowych do <b>syntezy tymidylanu i puryn (DNA)</b> oraz do metylacji, co jest kluczowe przy szybkich podziałach komórek zarodka.',
+    fk: [['synteza DNA / nukleotydów', ['dna', 'nukleotyd', 'tymid', 'puryn']], ['THF / jednostki jednowęglowe / metylacja', ['thf', 'jednoweglow', 'metyl']]], fnn: 1,
+    df: '<b>Wady cewy nerwowej</b> (rozszczep kręgosłupa, bezmózgowie), anemia megaloblastyczna u matki. Profilaktyka: 0,4 mg/d od okresu przed zajściem w ciążę.',
+    dk: [['wady cewy nerwowej', ['cew', 'rozszcz', 'bezmozg']], ['anemia megaloblastyczna', ['megalobl', 'anemi']]], dn: 1 },
+  I: { fn: 'Składnik <b>hormonów tarczycy</b> (T4, T3) matki i płodu, które sterują <b>rozwojem i mielinizacją OUN</b> (ośrodkowego układu nerwowego) płodu.',
+    fk: [['hormony tarczycy', ['tarczyc', 't3', 't4', 'tyrok']], ['rozwój mózgu / mielinizacja', ['mozg', 'mielin', 'rozwoj', 'oun']]],
+    df: '<b>Kretynizm</b>, niepełnosprawność intelektualna, niższe IQ (iloraz inteligencji) dziecka, poronienia. U matki wole i niedoczynność tarczycy.',
+    dk: [['kretynizm / niepełnosprawność intelektualna', ['kretyn', 'intelekt', 'iq', 'uposledz', 'niepelnospr']]], dn: 1 },
+  Fe: { fn: 'Składnik <b>hemu</b> (hemoglobina). Potrzebne do zwiększenia masy erytrocytów matki (objętość krwi rośnie o ok. 50%) oraz do budowy zapasów i rozwoju mózgu płodu.',
+    fk: [['hem / hemoglobina / erytrocyty', ['hem', 'hemu', 'hemoglob', 'erytro', 'krwink']], ['rosnące zapotrzebowanie / zapasy płodu', ['zapas', 'plod', 'objetos', 'zapotrzeb']]], fnn: 1,
+    df: '<b>Anemia</b> z niedoboru żelaza u matki → <b>poród przedwczesny, mała masa urodzeniowa</b>, gorszy rozwój poznawczy dziecka.',
+    dk: [['anemia', ['anemi', 'niedokrw']], ['poród przedwczesny / mała masa urodzeniowa', ['przedwczes', 'masa', 'urodzen']]], dn: 1 },
+  A: { fn: '<b>Kwas retinowy</b> (przez RAR) reguluje geny rozwojowe (HOX): rozwój twarzoczaszki, serca i OUN. Do tego widzenie (rodopsyna).',
+    fk: [['kwas retinowy / RAR / geny HOX', ['retinow', 'rar', 'hox', 'gen']], ['rozwój zarodka / różnicowanie', ['rozwoj', 'zarod', 'embrio', 'roznicow']]], fnn: 1,
+    df: 'Groźniejszy jest <b>NADMIAR retinoidów</b> (izotretynoina, duże dawki retinolu): <b>wady twarzoczaszki, serca i OUN</b>. β-karoten jest bezpieczny. Niedobór daje kurzą ślepotę u matki.',
+    dk: [['nadmiar teratogenny', ['nadmiar', 'teratog', 'wad']], ['izotretynoina / retinoidy', ['izotretyn', 'retinoid', 'retinol']]], dn: 1 },
+  K: { fn: 'Kofaktor <b>γ-karboksylacji czynników krzepnięcia</b> II, VII, IX, X. Słabo przechodzi przez łożysko.',
+    fk: [['γ-karboksylacja', ['karboksyl', 'gla']], ['czynniki krzepnięcia', ['czynnik', 'krzepn']]], fnn: 1,
+    df: '<b>Krwawienie z niedoboru wit. K u noworodka (VKDB)</b>, m.in. do OUN. Profilaktyka: wit. K domięśniowo zaraz po urodzeniu.',
+    dk: [['krwawienie u noworodka', ['krwaw', 'vkdb', 'noworod']], ['profilaktyka po porodzie', ['profilak', 'domiesn', 'po urodz', 'po porod']]], dn: 1 },
+  B12: { fn: '<b>Syntaza metioniny</b> (DNA, metylacja) i <b>mutaza metylomalonylo-CoA</b> (mielina), czyli rozwój układu nerwowego płodu i niemowlęcia.',
+    fk: [['synteza DNA / metylacja / syntaza metioniny', ['dna', 'metyl', 'metionin']], ['mielina', ['mielin']]], fnn: 1,
+    df: 'U matki wegetarianki lub weganki bez suplementów: <b>zaburzenia rozwoju neurologicznego i anemia u niemowlęcia</b> karmionego piersią. Ryzyko wad cewy nerwowej.',
+    dk: [['zaburzenia rozwoju neurologicznego', ['neurolog', 'rozwoj', 'nerw']], ['weganka / niemowlę karmione piersią', ['wegan', 'wegeta', 'piers', 'niemowl']]], dn: 1 },
+  D: { fn: 'Kalcytriol przez VDR (receptor witaminy D) <b>↑ wchłanianie wapnia i fosforu</b>, więc odpowiada za <b>mineralizację szkieletu płodu</b> i zapasy wit. D noworodka.',
+    fk: [['wchłanianie Ca i P', ['wchlan', 'wapn', 'fosfor']], ['mineralizacja szkieletu płodu', ['mineraliz', 'kosc', 'szkielet']]], fnn: 1,
+    df: '<b>Hipokalcemia noworodka</b>, krzywica wrodzona lub wczesna, niska masa kostna. U matki osteomalacja.',
+    dk: [['hipokalcemia / krzywica u dziecka', ['hipokalc', 'krzywic']], ['osteomalacja matki', ['osteomal']]], dn: 1 },
+},
+W: {
+  B12: { fn: 'Kofaktor <b>syntazy metioniny</b> (DNA, metylacja) i <b>mutazy metylomalonylo-CoA</b> (mielina). Wytwarzają ją tylko bakterie, a w diecie jest <b>wyłącznie w produktach zwierzęcych</b>.',
+    fk: [['syntaza metioniny / DNA', ['metionin', 'dna', 'metyl']], ['mutaza metylomalonylo-CoA / mielina', ['metylomalon', 'mutaz', 'mielin']], ['tylko produkty zwierzęce', ['zwierz', 'bakter']]],
+    df: '<b>Anemia megaloblastyczna</b> (często maskowana przez wysokie foliany z diety) i <b>objawy neurologiczne</b> (neuropatia, SCD). Weganin musi suplementować.',
+    dk: [['anemia megaloblastyczna', ['megalobl', 'makrocyt', 'anemi']], ['objawy neurologiczne', ['neuro', 'scd', 'rdzen', 'parestez', 'mielin']]] },
+  Fe: { fn: 'Składnik <b>hemu</b> (hemoglobina, mioglobina, cytochromy). U wegan występuje tylko <b>żelazo niehemowe</b>, które słabiej się wchłania i jest hamowane przez fityniany i polifenole.',
+    fk: [['hem / hemoglobina / transport tlenu', ['hem', 'hemu', 'hemoglob', 'tlen', 'cytochrom']], ['niehemowe / fityniany', ['niehem', 'fityn', 'polifen', 'wchlan']]], fnn: 1,
+    df: '<b>Niedokrwistość mikrocytowa</b> z niedoboru żelaza (niska ferrytyna), męczliwość, koilonychia.',
+    dk: [['anemia mikrocytowa', ['mikrocyt', 'anemi', 'niedokrw']], ['niska ferrytyna / objawy', ['ferryt', 'zmecz', 'meczl', 'koilon', 'bladosc']]], dn: 1 },
+  Zn: { fn: 'Kofaktor ponad 300 <b>enzymów</b> (polimerazy, anhydraza węglanowa, dysmutaza ponadtlenkowa) i składnik „palców cynkowych”, więc wpływa na <b>odporność, wzrost, gojenie i smak</b>.',
+    fk: [['kofaktor enzymów', ['enzym', 'kofaktor', 'polimeraz', 'anhydraz', 'dysmutaz']], ['odporność / wzrost / gojenie / smak', ['odpor', 'wzrost', 'gojen', 'smak', 'podzial']]], fnn: 1,
+    df: 'Upośledzona <b>odporność</b>, zaburzenia <b>smaku</b> i węchu, złe gojenie ran, zapalenie skóry, łysienie. U wegan winne są głównie fityniany.',
+    dk: [['odporność / gojenie', ['odpor', 'infekc', 'gojen']], ['smak / skóra / włosy', ['smak', 'wech', 'skor', 'wlos', 'lysien', 'dermat']]], dn: 1 },
+  Ca: { fn: 'Główny kation <b>hydroksyapatytu kości</b>. Poza tym przekaźnik wewnątrzkomórkowy, skurcz mięśni, przewodnictwo nerwowe, czynnik IV krzepnięcia.',
+    fk: [['hydroksyapatyt / kość', ['hydroksyap', 'kosc', 'minera']], ['skurcz mięśni / nerwy / krzepnięcie', ['skurcz', 'miesn', 'nerw', 'krzepn', 'przekazn']]], fnn: 1,
+    df: 'Ujemny bilans wapnia → <b>osteopenia, osteoporoza</b>, ↑ ryzyko złamań (PTH, czyli parathormon, pobiera Ca z kości).',
+    dk: [['osteoporoza / osteopenia / złamania', ['osteopor', 'osteopen', 'zlaman', 'gestos']]], dn: 1 },
+  D: { fn: 'Kalcytriol przez VDR (receptor witaminy D) <b>↑ wchłanianie wapnia i fosforu</b> i mineralizację kości. Naturalnych źródeł pokarmowych jest mało (ryby, żółtko).',
+    fk: [['wchłanianie Ca i P', ['wchlan', 'wapn', 'fosfor']], ['VDR / kalcytriol / mineralizacja', ['vdr', 'kalcytriol', 'mineraliz', 'kosc']]], fnn: 1,
+    df: '<b>Osteomalacja</b> (dorośli), <b>krzywica</b> (dzieci), wtórna nadczynność przytarczyc, osłabienie mięśni.',
+    dk: [['osteomalacja / krzywica', ['osteomal', 'krzywic']]], dn: 1 },
+  I: { fn: 'Składnik <b>hormonów tarczycy</b> T4 i T3, które regulują metabolizm podstawowy, termogenezę i rozwój OUN.',
+    fk: [['hormony tarczycy', ['tarczyc', 't3', 't4', 'tyrok']], ['metabolizm / rozwój', ['metabol', 'rozwoj', 'termog', 'mozg']]], fnn: 1,
+    df: '<b>Wole</b>, <b>niedoczynność tarczycy</b>, a w ciąży kretynizm i niższe IQ dziecka. Źródła dla wegan: sól jodowana, ewentualnie suplement.',
+    dk: [['wole / niedoczynność tarczycy', ['wole', 'niedoczyn', 'tarczyc']], ['kretynizm (w ciąży)', ['kretyn', 'iq', 'intelekt']]], dn: 1 },
+},
+};
+const KOL_EXCESS = { K: ['A', 'F'], P: ['A'], H: ['E'] };
+// generowanie zadań: 1 „dowolny składnik” + po 1 zadaniu na każdy składnik w każdym temacie
+Object.keys(KOL).forEach(tp => {
+  TASKS.push({ t: 'kol', tp, free: true,
+    q: `Kolokwium: wybierz <b>jeden składnik</b>${tp === 'A' ? ' (inny niż żelazo)' : ''} ważny ${KOL_PHRASE[tp]} i odpowiedz w trzech krokach: <b>(1) składnik → (2) funkcja biochemiczna → (3) skutki niedoboru</b>.` });
+  Object.keys(KOL[tp]).forEach(c => {
+    TASKS.push({ t: 'kol', tp, c,
+      q: `Kolokwium: <b>${COMP[c][0]} (${COMP[c][1]})</b> ${KOL_PHRASE[tp]}. Odpowiedz w dwóch krokach: <b>(1) funkcja biochemiczna → (2) skutki niedoboru</b>${(KOL_EXCESS[tp] || []).includes(c) ? ' (tu ważniejszy bywa NADMIAR, napisz też o nim)' : ''}.` });
+  });
+});
+
+// Słowniczek: [tytuł, regex wykrywający pojęcie w treści zadania i wyjaśnień, wyjaśnienie]
+const GLOSS = [
+['NAD⁺ i NADP⁺ — koenzymy z niacyny (PP, B3)', 'NAD⁺|NADP⁺|NADPH|\\bNAD\\b',
+ '<b>NAD⁺ (dinukleotyd nikotynamidoadeninowy)</b> powstaje z <b>niacyny, czyli witaminy PP (B3)</b>. Organizm umie też zrobić go z tryptofanu (ok. 60 mg tryptofanu daje 1 mg niacyny, przy udziale B6 i B2). Pełni dwie role. (1) <b>Przenośnik elektronów</b> w reakcjach utleniania: glikoliza, cykl Krebsa, β-oksydacja, a potem oddaje elektrony do łańcucha oddechowego. To „waluta energetyczna” komórki. NADP⁺/NADPH to wersja „budowlana”: syntezy (kwasy tłuszczowe, cholesterol) i ochrona przed wolnymi rodnikami (glutation). (2) <b>Substrat, który się zużywa</b>: enzymy PARP i sirtuiny rozcinają NAD⁺, więc trzeba go stale odtwarzać z niacyny.'],
+['PARP — polimeraza poli(ADP-rybozy), „strażnik DNA”', 'PARP',
+ '<b>PARP (polimeraza poli(ADP-rybozy))</b> to enzym w jądrze komórkowym, który jako jeden z pierwszych wykrywa pęknięcia nici DNA (np. po promieniowaniu UV, wolnych rodnikach). Rozcina <b>NAD⁺</b> na nikotynamid i ADP-rybozę, a potem dokleja długie łańcuchy ADP-rybozy do siebie i białek wokół uszkodzenia. Te łańcuchy działają jak „flaga”: przywołują enzymy naprawcze. Każda naprawa <b>zużywa NAD⁺</b>, którego źródłem jest niacyna (PP). Przy niedoborze niacyny skóra wystawiona na słońce ma dużo uszkodzeń DNA, a za mało NAD⁺, żeby je naprawić. Dlatego zmiany w pelagrze pojawiają się w miejscach odsłoniętych. To najczęściej podawane wyjaśnienie nadwrażliwości na słońce w pelagrze, ale nie jedyne proponowane. Ciekawostka kliniczna: inhibitory PARP (np. olaparyb) leczą raki z mutacją BRCA, bo komórka bez dwóch dróg naprawy DNA ginie.'],
+['PLP — fosforan pirydoksalu, aktywna postać B6', 'PLP',
+ '<b>PLP (fosforan pirydoksalu)</b> to aktywna postać <b>witaminy B6</b>. Tworzy z grupą aminową aminokwasu nietrwałe połączenie (zasadę Schiffa) i działa jak „uchwyt”, który pozwala aminokwas przekształcić. Trzy główne typy reakcji: <b>transaminacje</b> (np. ALT i AST, czyli aminotransferaza alaninowa i asparaginianowa), <b>dekarboksylacje</b> (powstają GABA, dopamina, serotonina, histamina) i <b>synteza hemu</b> (syntaza ALA). Dlatego niedobór B6 uderza jednocześnie w krew (hem) i w mózg (neuroprzekaźniki).'],
+['TPP — pirofosforan tiaminy, aktywna postać B1', 'TPP|pirofosforan tiaminy',
+ '<b>TPP (pirofosforan tiaminy)</b> to aktywna postać <b>witaminy B1</b>. Jest kofaktorem enzymów, które odcinają CO₂ od α-ketokwasów: <b>PDH</b> (pirogronian → acetylo-CoA), <b>dehydrogenazy α-ketoglutaranu</b> (cykl Krebsa), dehydrogenazy α-ketokwasów rozgałęzionych, a także <b>transketolazy</b> (szlak pentozofosforanowy). Bez TPP glukoza nie wchodzi do cyklu Krebsa, a mózg czerpie energię prawie wyłącznie z glukozy. Zapasy tiaminy wystarczają na kilka tygodni.'],
+['PDH — kompleks dehydrogenazy pirogronianowej', 'PDH|dehydrogenaz\\w* pirogronianow\\w*',
+ '<b>PDH (kompleks dehydrogenazy pirogronianowej)</b> to „bramka” między glikolizą a cyklem Krebsa: pirogronian → acetylo-CoA, w mitochondrium. Potrzebuje 5 kofaktorów z 4 witamin: <b>TPP (B1)</b>, liponian, <b>CoA (B5)</b>, <b>FAD (B2)</b>, <b>NAD⁺ (niacyna, PP)</b>. Gdy PDH stoi (np. brak B1), pirogronian zamienia się w mleczan, co daje kwasicę mleczanową, a neuron traci energię.'],
+['FAD i FMN — koenzymy z ryboflawiny (B2)', 'FAD|FMN|flawin\\w*',
+ '<b>FAD (dinukleotyd flawinoadeninowy)</b> i <b>FMN (mononukleotyd flawinowy)</b> to koenzymy z <b>witaminy B2 (ryboflawiny)</b>. Przenoszą elektrony w reakcjach redoks: łańcuch oddechowy (FMN w kompleksie I, FAD w kompleksie II), β-oksydacja, oksydaza protoporfirynogenu (synteza hemu), MTHFR (metabolizm folianów) i zamiana B6 w aktywny PLP. Dlatego niedobór B2 pociąga za sobą czynnościowe niedobory B6 i folianów.'],
+['CoA — koenzym A z kwasu pantotenowego (B5)', 'CoA|koenzym\\w* A\\b',
+ '<b>CoA (koenzym A)</b> zawiera <b>kwas pantotenowy (B5)</b>. Przenosi grupy acylowe (wiązanie tioestrowe): acetylo-CoA (cykl Krebsa, synteza cholesterolu, kwasów tłuszczowych i acetylocholiny), sukcynylo-CoA (synteza hemu), metylomalonylo-CoA. Niedobór B5 u ludzi praktycznie nie występuje, bo B5 jest prawie w każdym pokarmie (gr. pantos = wszędzie).'],
+['THF — tetrahydrofolian, aktywna postać folianów (B9)', 'THF|tetrahydrofolian',
+ '<b>THF (tetrahydrofolian)</b> to aktywna postać <b>folianów (B9)</b>, „wózek” na jednostki jednowęglowe (grupy metylowa, metylenowa, formylowa). Jako 5,10-metyleno-THF daje węgiel do <b>tymidylanu</b> (DNA), a jako formylo-THF do puryn (adenina, guanina). Enzym DHFR (reduktaza dihydrofolianowa) odtwarza THF po reakcji. Blokuje go <b>metotreksat</b>, dlatego metotreksat daje obraz podobny do niedoboru folianów.'],
+['Pułapka folianowa (5-metylo-THF)', '5-metylo-THF|pułapk\\w* folianow\\w*',
+ '<b>Pułapka folianowa:</b> enzym MTHFR zamienia 5,10-metyleno-THF w <b>5-metylo-THF</b>, główną postać folianów we krwi. Tej reakcji praktycznie nie da się odwrócić. Jedyna droga powrotu do THF to oddanie grupy CH₃ na homocysteinę przez <b>syntazę metioniny, która potrzebuje B12</b>. Gdy brakuje B12, foliany utykają jako 5-metylo-THF: we krwi jest ich dużo, ale komórka nie ma THF do syntezy DNA.'],
+['MTHFR — reduktaza metylenotetrahydrofolianowa', 'MTHFR',
+ '<b>MTHFR (reduktaza metylenotetrahydrofolianowa)</b> to enzym zależny od <b>FAD (B2)</b>, który zamienia 5,10-metyleno-THF w 5-metylo-THF. Częsty polimorfizm C677T obniża jego aktywność (↑ homocysteina, zwłaszcza przy niskich folianach). Znaczenie kliniczne tego polimorfizmu jest mniejsze, niż sugerują komercyjne testy.'],
+['Syntaza metioniny — enzym zależny od B12 i folianów', 'syntaz\\w* metioniny',
+ '<b>Syntaza metioniny</b> to jeden z dwóch enzymów człowieka zależnych od <b>B12</b> (jako metylokobalamina). Przenosi grupę CH₃ z 5-metylo-THF (foliany) na homocysteinę. Powstaje <b>metionina</b> (a z niej SAM, główny dawca grup metylowych) i odzyskany <b>THF</b>. Ponieważ potrzebuje jednocześnie B12 i folianów, homocysteina rośnie przy niedoborze każdej z tych witamin.'],
+['MMA — kwas metylomalonowy (marker swoisty dla B12)', 'MMA|metylomalon\\w*',
+ '<b>MMA (kwas metylomalonowy)</b> gromadzi się, gdy nie działa <b>mutaza metylomalonylo-CoA</b>, drugi enzym zależny od <b>B12</b> (jako adenozylokobalamina). Normalnie zamienia ona metylomalonylo-CoA (z rozkładu kwasów tłuszczowych o nieparzystej liczbie węgli i aminokwasów: waliny, izoleucyny, metioniny, treoniny) w sukcynylo-CoA, który wchodzi do cyklu Krebsa. Foliany nie biorą udziału w tej reakcji, więc <b>↑ MMA wskazuje na B12</b>. Jedna z hipotez uszkodzenia nerwów: nieprawidłowe kwasy tłuszczowe wbudowują się w mielinę.'],
+['Homocysteina', 'homocystein\\w*',
+ '<b>Homocysteina</b> to aminokwas, który powstaje z metioniny po oddaniu grupy metylowej. Organizm usuwa ją dwiema drogami: <b>remetylacją</b> z powrotem do metioniny (potrzebne B12 + foliany) i <b>transsulfuracją</b> do cysteiny (potrzebna B6). Dlatego ↑ homocysteina nie mówi, którego składnika brakuje: może to być B12, B9 albo B6 (a także niewydolność nerek). Wysoka homocysteina wiąże się z ryzykiem zakrzepicy i miażdżycy.'],
+['SAM — S-adenozylometionina, uniwersalny dawca metylu', 'SAM\\b|S-adenozylometionin\\w*',
+ '<b>SAM (S-adenozylometionina)</b> to uniwersalny dawca grup metylowych: metylacja DNA, białek i fosfolipidów, synteza kreatyny, neuroprzekaźników i składników mieliny. Powstaje z metioniny, więc pośrednio zależy od B12 i folianów. Spadek SAM w OUN (ośrodkowym układzie nerwowym) to jedno z wyjaśnień objawów neurologicznych niedoboru B12.'],
+['SCD — podostre złożone zwyrodnienie rdzenia', 'SCD|podostre złożone zwyrodnienie',
+ '<b>SCD (podostre złożone zwyrodnienie rdzenia, subacute combined degeneration)</b> to demielinizacja <b>sznurów tylnych</b> (funiculi posteriores, posterior columns: czucie wibracji i ułożenia, dodatni objaw Romberga) oraz <b>dróg korowo-rdzeniowych bocznych</b> (tractus corticospinalis lateralis, lateral corticospinal tract: niedowład spastyczny, objaw Babińskiego). „Złożone” znaczy, że uszkodzone są jednocześnie drogi czuciowe i ruchowe. Przyczyny: niedobór B12 (też funkcjonalny po N₂O), niedobór miedzi.'],
+['Syntaza ALA — pierwszy enzym syntezy hemu (B6)', 'syntaz\\w* ALA|\\bALA\\b',
+ '<b>Syntaza ALA (syntaza kwasu δ-aminolewulinowego)</b> to pierwszy enzym syntezy hemu, w mitochondrium: glicyna + sukcynylo-CoA → ALA. Kofaktor: <b>PLP (B6)</b>. To etap limitujący, hamowany zwrotnie przez hem. Postać erytroidalna (ALAS2) jest kodowana na chromosomie X. Jej mutacje dają wrodzoną anemię syderoblastyczną, która często reaguje na B6.'],
+['ALAD — dehydrataza ALA, enzym z cynkiem', 'ALAD',
+ '<b>ALAD (dehydrataza kwasu δ-aminolewulinowego)</b> to drugi enzym syntezy hemu, w cytoplazmie: 2 cząsteczki ALA → porfobilinogen. Zawiera <b>cynk</b>. Ołów wypiera z niego cynk i hamuje enzym, dlatego w zatruciu ołowiem rośnie ALA w moczu i pojawia się anemia (z bazofilnym nakrapianiem erytrocytów).'],
+['Ferrochelataza i ZPP', 'ferrochelataz\\w*|ZPP',
+ '<b>Ferrochelataza</b> to ostatni enzym syntezy hemu (w mitochondrium): wbudowuje Fe²⁺ w protoporfirynę IX. Gdy żelaza brakuje, wbudowuje cynk i powstaje <b>ZPP (protoporfiryna cynkowa)</b>. ZPP rośnie w niedoborze żelaza i w zatruciu ołowiem (ołów hamuje też ferrochelatazę).'],
+['Syderoblast pierścieniowy', 'syderoblast\\w*',
+ '<b>Syderoblast pierścieniowy</b> to erytroblast szpiku, w którym żelazo nie zostało wbudowane w hem i odłożyło się w mitochondriach. Mitochondria leżą wokół jądra, więc w barwieniu błękitem pruskim (barwi żelazo) widać „pierścień” niebieskich ziaren. Przyczyny: niedobór B6 lub miedzi, alkohol, ołów, izoniazyd, zespoły mielodysplastyczne.'],
+['Megaloblast — skąd się bierze', 'megaloblast\\w*',
+ '<b>Megaloblast</b> to zbyt duży prekursor erytrocytu. Cytoplazma dojrzewa normalnie (robi hemoglobinę), ale jądro nie nadąża, bo brakuje nukleotydów do DNA (asynchronia jądrowo-cytoplazmatyczna). Komórki dzielą się rzadziej, więc są większe, a wiele z nich ginie jeszcze w szpiku (nieskuteczna erytropoeza: ↑ LDH, czyli dehydrogenaza mleczanowa, ↑ bilirubina). Ten sam problem z DNA dotyczy innych szybko dzielących się komórek: neutrofile są hipersegmentowane, a język gładki.'],
+['Tymidylan — nukleotyd tylko dla DNA', 'tymidylan\\w*|dTMP',
+ '<b>Tymidylan (dTMP)</b> to nukleotyd potrzebny tylko do DNA (RNA ma zamiast niego uracyl). Syntaza tymidylanowa dokłada grupę metylową do dUMP, biorąc węgiel z <b>5,10-metyleno-THF (foliany)</b>. Bez folianów (albo w pułapce folianowej z braku B12) do DNA wbudowuje się uracyl, nici pękają i komórka nie może się podzielić.'],
+['Ferroksydazy: ceruloplazmina i hefajstyna (miedź)', 'ferroksydaz\\w*|ceruloplazmin\\w*|hefajstyn\\w*',
+ '<b>Ferroksydazy</b> to enzymy zawierające <b>miedź</b>, które utleniają Fe²⁺ do Fe³⁺. <b>Hefajstyna</b> siedzi w błonie enterocytu obok ferroportyny (wyjście żelaza z jelita do krwi). <b>Ceruloplazmina</b> krąży w osoczu i obsługuje żelazo wychodzące z makrofagów i wątroby. Tylko Fe³⁺ wiąże się z transferyną. Bez miedzi żelazo utyka w komórkach, więc anemia występuje mimo pełnych zapasów.'],
+['Ferroportyna i hepcydyna', 'ferroportyn\\w*|hepcydyn\\w*',
+ '<b>Ferroportyna</b> to jedyne znane „drzwi wyjściowe” żelaza z komórek (enterocyt, makrofag, hepatocyt). <b>Hepcydyna</b> to hormon wątroby, który wiąże ferroportynę i powoduje jej rozkład, czyli zamyka te drzwi. Hepcydyna rośnie w stanie zapalnym (anemia chorób przewlekłych) i przy nadmiarze żelaza, a spada przy jego niedoborze.'],
+['DMT1 i Dcytb — wejście żelaza do enterocytu', 'DMT1|Dcytb',
+ '<b>DMT1 (transporter metali dwuwartościowych 1)</b> to białko w błonie szczytowej enterocytu dwunastnicy, które wpuszcza do komórki <b>tylko Fe²⁺</b>. Żelazo z pożywienia roślinnego to głównie Fe³⁺, więc musi być najpierw zredukowane. Robi to reduktaza <b>Dcytb (dwunastniczy cytochrom b)</b> oraz <b>witamina C</b>, która dostarcza elektronów. Żelazo hemowe (z mięsa) wchodzi inną drogą, jako cały hem.'],
+['Transferyna i ferrytyna', 'transferyn\\w*|ferrytyn\\w*',
+ '<b>Transferyna</b> to białko osocza, które wozi Fe³⁺ do szpiku (erytroblasty mają receptor transferyny). <b>Ferrytyna</b> to białko magazynujące żelazo w komórkach (wątroba, makrofagi). Jej stężenie w surowicy odzwierciedla zapasy, ale rośnie też w stanie zapalnym, bo ferrytyna jest białkiem ostrej fazy.'],
+['Metalotioneina — dlaczego nadmiar cynku daje niedobór miedzi', 'metalotionein\\w*',
+ '<b>Metalotioneina</b> to białko bogate w cysteinę, które wiąże metale. Duże dawki cynku pobudzają jej syntezę w enterocytach. Metalotioneina mocniej wiąże miedź niż cynk, więc „łapie” miedź z pokarmu i zatrzymuje ją w enterocycie. Enterocyt po kilku dniach złuszcza się do światła jelita i miedź wraca z nim do jelita, co kończy się niedoborem miedzi. Ten mechanizm wykorzystuje się celowo w leczeniu choroby Wilsona (octan cynku).'],
+['γ-karboksylacja i reszty Gla — jak działa witamina K', 'γ-karboksyl\\w*|\\bGla\\b|\\bGlu\\b',
+ '<b>γ-karboksylacja</b> to dodanie drugiej grupy –COOH do reszty glutaminianu (Glu) w białku. Powstaje <b>Gla (kwas γ-karboksyglutaminowy)</b>. Dwie sąsiednie grupy karboksylowe chwytają jon Ca²⁺ jak szczypce, a Ca²⁺ przyczepia białko do ujemnie naładowanych fosfolipidów błony płytek albo do kryształu kości. Enzym γ-karboksylaza działa w hepatocycie (czynniki krzepnięcia) i osteoblaście (osteokalcyna). Jej kofaktorem jest zredukowana <b>witamina K</b>.'],
+['VKORC1 — recykling witaminy K (cel warfaryny)', 'VKORC1|reduktaz\\w* epoksydu|warfaryn\\w*',
+ '<b>VKORC1 (reduktaza epoksydu witaminy K, podjednostka 1)</b> to enzym „recyklingu” witaminy K. Po każdej karboksylacji witamina K utlenia się do epoksydu, a VKORC1 przywraca ją do postaci aktywnej, więc jedna cząsteczka może pracować wiele razy. <b>Warfaryna i acenokumarol</b> blokują VKORC1, przez co wit. K zużywa się po jednym użyciu. Polimorfizmy genu VKORC1 częściowo tłumaczą, dlaczego dawki warfaryny tak bardzo różnią się między ludźmi.'],
+['VKDB i PIVKA', 'VKDB|PIVKA',
+ '<b>VKDB (vitamin K deficiency bleeding)</b> to krwawienie z niedoboru wit. K u noworodka. Postać wczesna: pierwsza doba, zwykle przez leki matki. Klasyczna: 2.–7. doba. Późna: 2.–12. tydzień, często krwawienie do OUN, prawie tylko u dzieci karmionych piersią bez profilaktyki. <b>PIVKA</b> to niekarboksylowane, nieaktywne białka (np. czynniki krzepnięcia), które krążą przy niedoborze wit. K lub w trakcie leczenia warfaryną.'],
+['PT/INR i APTT — co mierzą', '\\bPT\\b|INR|APTT',
+ '<b>PT (czas protrombinowy), wyrażany jako INR (międzynarodowy współczynnik znormalizowany)</b>, mierzy szlak zewnątrzpochodny (czynnik VII) i wspólny (X, V, II, fibrynogen). Wydłuża się najwcześniej przy niedoborze wit. K i na początku leczenia warfaryną, bo czynnik VII ma najkrótszy okres półtrwania. <b>APTT (czas częściowej tromboplastyny po aktywacji)</b> mierzy szlak wewnątrzpochodny (XII, XI, IX, VIII) i wspólny. Wydłuża się m.in. w hemofilii i przy leczeniu heparyną.'],
+['Osteokalcyna i MGP — białka Gla kości', 'osteokalcyn\\w*|MGP',
+ '<b>Osteokalcyna</b> to białko wytwarzane przez osteoblasty. Zawiera 3 reszty Gla i wiąże hydroksyapatyt, a jej stężenie jest markerem tworzenia kości. <b>MGP (białko Gla macierzy)</b> hamuje wapnienie tkanek miękkich, chrząstki i ściany naczyń. Oba białka wymagają <b>witaminy K</b> do karboksylacji.'],
+['Hydroksylazy prolilowa i lizylowa (witamina C)', 'hydroksyla\\w* prolil\\w*|hydroksylaz\\w* lizyl\\w*|hydroksyprolin\\w*|hydroksylacj\\w* (proliny|kolagenu)',
+ '<b>Hydroksylazy prolilowa i lizylowa</b> to enzymy w retikulum endoplazmatycznym fibroblastów i osteoblastów. Dodają grupę –OH do proliny i lizyny w prokolagenie. Zawierają żelazo (Fe²⁺), które w trakcie reakcji czasem się utlenia, a <b>witamina C</b> redukuje je z powrotem. Hydroksyprolina stabilizuje potrójną helisę wiązaniami wodorowymi, a hydroksylizyna jest miejscem sieciowania i przyłączania cukrów. Bez wit. C kolagen jest słaby i rozwija się szkorbut: krwawienia, słabe gojenie, osteopenia.'],
+['Oksydaza lizylowa (miedź) — sieciowanie kolagenu', 'oksydaz\\w* lizylow\\w*|sieciowani\\w*|sieciuj\\w*',
+ '<b>Oksydaza lizylowa</b> to enzym zawierający <b>miedź</b>, działający poza komórką. Utlenia reszty lizyny i hydroksylizyny w kolagenie i elastynie do aldehydów, które tworzą <b>wiązania krzyżowe</b> między sąsiednimi cząsteczkami. To one dają tkance wytrzymałość na rozciąganie. Niedobór Cu → kruche kości, tętniaki, wiotka skóra. Zatrucie groszkiem siewnym (latyryzm) hamuje ten enzym i daje podobny obraz.'],
+['Tyrozynaza (miedź) — synteza melaniny', 'tyrozynaz\\w*',
+ '<b>Tyrozynaza</b> to enzym melanocytów zawierający <b>miedź</b>: tyrozyna → DOPA → dopachinon → melanina. Gdy nie działa (albinizm, niedobór miedzi), skóra i włosy tracą pigment.'],
+['Witamina D: kalcydiol, kalcytriol, VDR', 'VDR|kalcytriol\\w*|25\\(OH\\)D|kalcydiol\\w*|1α-hydroksylaz\\w*',
+ '<b>25(OH)D (kalcydiol)</b> to postać magazynowa witaminy D, która powstaje w wątrobie i długo krąży we krwi. Dlatego mierzy się ją do oceny zaopatrzenia. <b>Kalcytriol (1,25(OH)₂D)</b> to aktywny hormon, który powstaje w nerce dzięki 1α-hydroksylazie (pobudza ją PTH). Wiąże się z <b>VDR (receptorem witaminy D)</b>, czynnikiem transkrypcyjnym w jądrze komórki. W enterocycie włącza geny kanału wapniowego, białka przenoszącego wapń (kalbindyny) i pompy wapniowej, więc wapń wchłania się aktywnie. Bez wit. D wchłania się tylko niewielka część wapnia z diety.'],
+['PTH — parathormon', 'PTH|parathormon\\w*',
+ '<b>PTH (parathormon)</b> to hormon przytarczyc, wydzielany przy spadku Ca²⁺ we krwi. Podnosi wapń trzema drogami: uwalnia go z kości (pośrednio aktywuje osteoklasty), zatrzymuje w nerce i pobudza nerkową 1α-hydroksylazę (więcej kalcytriolu → więcej wapnia z jelita). Jednocześnie zwiększa wydalanie fosforanów z moczem. Do wydzielania i działania PTH potrzebny jest <b>magnez</b>.'],
+['FGF23', 'FGF23',
+ '<b>FGF23 (czynnik wzrostu fibroblastów 23)</b> to hormon wydzielany przez osteocyty, gdy fosforanów jest za dużo. Zwiększa wydalanie fosforanów przez nerkę i hamuje aktywację wit. D.'],
+['Receptor NMDA i rola magnezu', 'NMDA',
+ '<b>Receptor NMDA (N-metylo-D-asparaginianowy)</b> to receptor glutaminianu (głównego neuroprzekaźnika pobudzającego), który jest kanałem dla Ca²⁺ i Na⁺. W spoczynku jego światło zatyka jon <b>Mg²⁺</b>, a dopiero depolaryzacja go wypycha. Przy niedoborze magnezu ten „korek” słabnie i neurony łatwiej się pobudzają (drżenie, drgawki). Nadmierna aktywacja NMDA → napływ Ca²⁺ → śmierć neuronów (ekscytotoksyczność).'],
+['GABA — główny neuroprzekaźnik hamujący', 'GABA',
+ '<b>GABA (kwas γ-aminomasłowy)</b> to główny neuroprzekaźnik hamujący w mózgu. Powstaje z glutaminianu dzięki <b>dekarboksylazie glutaminianu (GAD)</b>, która potrzebuje <b>PLP (B6)</b>. Benzodiazepiny tylko wzmacniają działanie istniejącego GABA, dlatego gdy GABA brakuje (niedobór B6, przedawkowanie izoniazydu), są nieskuteczne.'],
+['Hydroksylaza tyrozynowa (Fe) i β-hydroksylaza dopaminowa (Cu)', 'hydroksylaz\\w* tyrozynow\\w*|β-hydroksylaz\\w*',
+ '<b>Hydroksylaza tyrozynowa</b> to enzym limitujący syntezę katecholamin (tyrozyna → L-DOPA). Zawiera <b>żelazo</b> i potrzebuje tetrahydrobiopteryny. <b>β-hydroksylaza dopaminowa</b> działa w pęcherzykach synaptycznych i zamienia dopaminę w noradrenalinę. Zawiera <b>miedź</b>, a <b>witamina C</b> dostarcza jej elektronów.'],
+['Transketolaza (B1)', 'transketolaz\\w*',
+ '<b>Transketolaza</b> to enzym szlaku pentozofosforanowego (dostarcza rybozy do DNA i RNA oraz NADPH) zależny od <b>TPP (B1)</b>. Pomiar jej aktywności w erytrocytach z dodatkiem TPP i bez niego to klasyczny test czynnościowy niedoboru B1.'],
+['Encefalopatia Wernickego i zespół Korsakowa', 'Wernick\\w*|Korsakow\\w*',
+ '<b>Encefalopatia Wernickego</b> to ostry stan z niedoboru <b>tiaminy (B1)</b>: splątanie, zaburzenia ruchów gałek ocznych (oczopląs, porażenia), ataksja. Uszkodzone są ciała suteczkowate (corpora mamillaria, mammillary bodies), przyśrodkowe wzgórze (thalamus) i istota szara okołowodociągowa (substantia grisea centralis, periaqueductal grey). Nieleczona przechodzi w <b>zespół Korsakowa</b> (niepamięć następcza, konfabulacje). Leczenie: duże dawki tiaminy dożylnie, zawsze przed glukozą albo razem z nią.'],
+['Pelagra — niedobór niacyny', 'pelagr\\w*',
+ '<b>Pelagra</b> to choroba z niedoboru <b>niacyny (wit. PP, B3)</b> albo tryptofanu, z którego organizm częściowo ją wytwarza. Typowe sytuacje: dieta oparta na kukurydzy (niacyna związana, mało tryptofanu), alkoholizm, zespół rakowiaka (tryptofan zużywany na serotoninę), choroba Hartnupów (zaburzony transport tryptofanu), izoniazyd (brak B6 potrzebnej do przemiany tryptofanu w niacynę). Objawy to „4 D”: dermatitis, diarrhea, dementia, death (zapalenie skóry, biegunka, otępienie, śmierć).'],
+['Kretynizm — wrodzony niedobór jodu', 'kretynizm\\w*',
+ '<b>Kretynizm</b> to nieodwracalna niepełnosprawność intelektualna, niski wzrost, często głuchota i spastyczność. Rozwija się, gdy płód i niemowlę nie mają hormonów tarczycy. Hormony T4 i T3 zawierają 4 lub 3 atomy <b>jodu</b> i sterują mielinizacją oraz migracją neuronów. Profilaktyka: jodowanie soli, suplementacja jodu w ciąży, badania przesiewowe noworodków w kierunku wrodzonej niedoczynności tarczycy.'],
+['N₂O — podtlenek azotu i B12', 'N₂O|podtlenek azotu',
+ '<b>N₂O (podtlenek azotu, „gaz rozweselający”)</b> utlenia kobalt w kobalaminie. Syntaza metioniny traci kofaktor i przestaje działać, dopóki nie dostanie nowej B12. Stężenie B12 we krwi bywa prawidłowe, ale witamina jest nieczynna („funkcjonalny niedobór”). Dlatego oznacza się MMA i homocysteinę, które rosną.'],
+['Izoniazyd a witamina B6', 'izoniazyd\\w*',
+ '<b>Izoniazyd</b> to lek przeciwgruźliczy, który wiąże pirydoksal (tworzy hydrazon wydalany z moczem) i hamuje jego aktywację do PLP. Skutki: neuropatia obwodowa (dlatego w trakcie leczenia daje się profilaktycznie B6), a przy przedawkowaniu drgawki z braku GABA.'],
+['Awidyna — białko z surowego jaja', 'awidyn\\w*',
+ '<b>Awidyna</b> to białko surowego białka jaja, które wiąże <b>biotynę</b> jednym z najsilniejszych znanych wiązań niekowalencyjnych. Taki kompleks się nie wchłania. Gotowanie denaturuje awidynę, więc ugotowane jajka są bezpieczne. W laboratorium to samo zjawisko wykorzystuje układ biotyna–streptawidyna.'],
+['Fityniany — „złodzieje” żelaza, cynku i wapnia', 'fitynian\\w*|kwas\\w* fitynow\\w*',
+ '<b>Fityniany (kwas fitynowy)</b> to forma, w jakiej nasiona (zboża, strączki, orzechy) magazynują fosfor. Mają dużo ujemnych ładunków, więc wiążą Fe, Zn i Ca w nierozpuszczalne kompleksy, które się nie wchłaniają. Człowiek ma za mało enzymu rozkładającego fityniany (fitazy). Robią to drożdże i bakterie, dlatego zakwas, kiełkowanie i moczenie poprawiają wchłanianie minerałów.'],
+['RAR — receptory kwasu retinowego (wit. A)', 'RAR|kwas\\w* retinow\\w*|retinoid\\w*',
+ '<b>Kwas retinowy</b> to aktywna postać <b>witaminy A</b> działająca na geny. Wiąże się z <b>RAR (receptorami kwasu retinowego)</b>, czynnikami transkrypcyjnymi w jądrze. Steruje różnicowaniem komórek (keratynocyty, nabłonki, komórki krwi) i rozwojem zarodka (geny HOX, łuki skrzelowe), stąd teratogenność retinoidów. Inna postać, retinal, tworzy rodopsynę w siatkówce (widzenie o zmierzchu).'],
+['Acrodermatitis enteropathica i ZIP4', 'acrodermatitis|ZIP4',
+ '<b>Acrodermatitis enteropathica</b> to choroba z niedoboru <b>cynku</b>. Postać wrodzona to autosomalna recesywna mutacja <b>ZIP4</b>, transportera cynku w enterocycie. Postać nabyta: żywienie pozajelitowe bez cynku, alkoholizm, choroby jelit. Zmiany pojawiają się na dłoniach i stopach („akro-”) i wokół otworów ciała, a do tego łysienie i biegunka.'],
+['Choroba Menkesa (ATP7A) vs Wilsona (ATP7B)', 'Menkes\\w*|ATP7A|Wilson\\w*',
+ '<b>Choroba Menkesa</b> to mutacja <b>ATP7A</b> sprzężona z chromosomem X. ATP7A to pompa, która wyprowadza miedź z enterocytu do krwi, więc miedź utyka w jelicie, a tkanki jej nie dostają. Skutki: kręcone, odbarwione włosy, drgawki, zwyrodnienie OUN, kruche naczynia. <b>Choroba Wilsona</b> to odwrotność: mutacja ATP7B, miedź nie jest wydalana z żółcią i gromadzi się w wątrobie i mózgu (pierścień Kaysera-Fleischera).'],
+['IPP — inhibitory pompy protonowej', 'IPP',
+ '<b>IPP (inhibitory pompy protonowej)</b>, np. omeprazol, hamują wydzielanie kwasu solnego w żołądku. Skutki dla mikroskładników: gorsze uwalnianie B12 z białek pokarmu, gorsza redukcja i rozpuszczanie żelaza niehemowego, a przy długim stosowaniu hipomagnezemia.'],
+['Czynnik wewnętrzny i wchłanianie B12', 'czynnik\\w* wewnętrzn\\w*|jelit\\w* krętego|ileum',
+ '<b>Wchłanianie B12</b> przebiega etapami. Kwas solny uwalnia B12 z białek pokarmu. W żołądku B12 wiąże się z haptokoryną, a w dwunastnicy przechodzi na <b>czynnik wewnętrzny Castle’a</b> (wydzielany przez komórki okładzinowe żołądka). Kompleks wchłania się dopiero w <b>końcowym odcinku jelita krętego</b> (ileum terminale, terminal ileum). Dlatego niedobór dają: zanik błony śluzowej żołądka (niedokrwistość Addisona-Biermera), resekcja żołądka lub jelita krętego, choroba Leśniowskiego-Crohna, metformina, IPP. B12 wytwarzana przez bakterie okrężnicy powstaje za miejscem wchłaniania.'],
+];
+
+const TYPES = { kol: 'jak na kolokwium', mc: 'wybór', case: 'przypadek kliniczny', tf: 'prawda / fałsz', odd: 'który nie pasuje', match: 'dopasuj', sort: 'posortuj', order: 'ułóż kolejność', recall: 'wpisz z pamięci' };
+const TYPE_GROUP = { kol: 'kol', mc: 'wybor', case: 'wybor', odd: 'wybor', tf: 'tf', match: 'match', sort: 'sort', order: 'order', recall: 'recall' };
+const GROUPS = { kol: 'jak na kolokwium (pisemne)', wybor: 'wybór i przypadki', tf: 'prawda / fałsz', match: 'dopasuj', sort: 'posortuj', order: 'kolejność', recall: 'wpisz z pamięci' };
+const PCOL = ['#1f6fd1', '#d4561c', '#7b1fa2', '#00897b', '#c62828', '#6d4c41', '#ef6c00', '#2e7d32'];
+const KEY = 'kon4-creative-v2';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } };
+const fmt = x => (Math.round(x * 10) / 10).toString().replace('.', ',');
+const okB = (it, b) => Array.isArray(it[1]) ? it[1].includes(b) : it[1] === b;
+const bName = (T, it) => (Array.isArray(it[1]) ? it[1] : [it[1]]).map(b => T.buckets[b]).join(' lub ');
+
+let S = null, mode = 2, nPick = 999;
+const selTopics = new Set(Object.keys(TOPICS)), selTypes = new Set(Object.keys(GROUPS));
+let st = null;
+
+// ---------- start ----------
+const VIT = new Set(['B1', 'B2', 'PP', 'B5', 'B6', 'H', 'B9', 'B12', 'A', 'D', 'E', 'K', 'C']);
+const tileSet = ['B12', 'B9', 'B6', 'Cu', 'Fe', 'D', 'K', 'C', 'Ca', 'Mg', 'Zn', 'I'];
+$('tiles').innerHTML = tileSet.map(k => `<div class="tile ${VIT.has(k) ? 'v' : 'm'}"><b>${esc(COMP[k][0].replace('wit. ', ''))}</b><small>${esc(COMP[k][1])}</small></div>`).join('');
+$('lead').textContent = `${TASKS.length} zadań do pytań 1–5, 10 i 23: dopasowywanie, sortowanie, układanie szlaków, listy z pamięci, przypadki kliniczne, prawda/fałsz i „który nie pasuje”. Po każdym zadaniu dostajecie rozbiórkę: dlaczego każda odpowiedź jest dobra albo zła, mechanizm i ramkę „Zapamiętaj”.`;
+$('topics').innerHTML = Object.entries(TOPICS).map(([k, t]) => `<button class="chip" data-t="${k}" aria-pressed="true">${esc(t.name)} <span class="mute">${t.q}</span></button>`).join('');
+$('types').innerHTML = Object.entries(GROUPS).map(([k, t]) => `<button class="chip" data-g="${k}" aria-pressed="true">${esc(t)}</button>`).join('');
+function pool() { return TASKS.map((t, i) => i).filter(i => selTopics.has(TASKS[i].tp) && selTypes.has(TYPE_GROUP[TASKS[i].t])); }
+function upCount() { $('count').textContent = `Dostępnych zadań: ${pool().length}`; }
+$('topics').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const k = b.dataset.t; selTopics.has(k) ? selTopics.delete(k) : selTopics.add(k); b.setAttribute('aria-pressed', selTopics.has(k)); upCount(); });
+$('types').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const k = b.dataset.g; selTypes.has(k) ? selTypes.delete(k) : selTypes.add(k); b.setAttribute('aria-pressed', selTypes.has(k)); upCount(); });
+function seg(id, attr, fn) { $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; [...$(id).children].forEach(x => x.setAttribute('aria-pressed', x === b)); fn(b.dataset[attr]); }); }
+seg('modeSeg', 'm', v => { mode = +v; $('n2').hidden = mode === 1; });
+seg('nSeg', 'n', v => { nPick = +v; });
+upCount();
+const old = load(); if (old && !old.done && old.ids && old.ids.every(i => TASKS[i])) $('resume').hidden = false;
+$('resume').addEventListener('click', () => { S = load(); showTask(); });
+$('go').addEventListener('click', () => { let ids = shuffle(pool()); if (!ids.length) return; begin(ids.slice(0, nPick)); });
+function begin(ids) {
+  S = { mode, names: [($('n1').value || 'Gracz 1').trim(), ($('n2').value || 'Gracz 2').trim()].slice(0, mode), ids, cur: 0, res: {}, done: false };
+  save(); showTask();
+}
+
+// ---------- recall parser ----------
+const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/\bwit\.?|\bwitaminy\b|\bwitamina\b|\bvit\.?/g, ' ').replace(/[().:]/g, ' ').replace(/\s+/g, ' ').trim();
+const AMAP = {}; Object.entries(ALIAS).forEach(([k, arr]) => arr.forEach(a => { AMAP[norm(a)] = k; }));
+function parseRecall(txt) {
+  const out = [], unk = [];
+  txt.split(/[,;\n\/+]|\s+i\s+|\s+oraz\s+/i).map(x => norm(x)).filter(Boolean).forEach(tok => {
+    if (AMAP[tok]) { out.push(AMAP[tok]); return; }
+    let hit = false;
+    tok.split(' ').forEach(w => { if (AMAP[w]) { out.push(AMAP[w]); hit = true; } });
+    if (!hit) unk.push(tok);
+  });
+  return { ids: [...new Set(out)], unk };
+}
+const lab = i => `${COMP[i][0]} (${COMP[i][1]})`;
+
+// ---------- task view ----------
+function showTask() { $('vStart').hidden = true; $('vEnd').hidden = true; $('vTask').hidden = false; render(); window.scrollTo(0, 0); }
+function player() { return S.mode === 2 ? S.cur % 2 : 0; }
+function scores() { const sc = S.names.map(() => ({ pts: 0, n: 0 })); Object.values(S.res).forEach(r => { sc[r.p].pts += r.score; sc[r.p].n += 1; }); return sc; }
+function topbar() {
+  const sc = scores(), p = player();
+  $('s1').textContent = `${S.names[0]}: ${fmt(sc[0].pts)}`; $('s1').className = 'pl p1' + (p === 0 ? ' on' : '');
+  if (S.mode === 2) { $('s2').hidden = false; $('s2').textContent = `${S.names[1]}: ${fmt(sc[1].pts)}`; $('s2').className = 'pl p2' + (p === 1 ? ' on' : ''); } else $('s2').hidden = true;
+  $('pos').textContent = `${S.cur + 1} / ${S.ids.length}`;
+  $('barI').style.width = (100 * S.cur / S.ids.length) + '%';
+}
+const HOWTO = {
+  mc: 'Wybierz jedną odpowiedź i kliknij „Sprawdź”.', case: 'Przeczytaj przypadek, wybierz jedną odpowiedź i kliknij „Sprawdź”.', odd: 'Trzy odpowiedzi do siebie pasują, jedna nie. Wskaż tę, która nie pasuje.', tf: 'Zdecyduj, czy zdanie jest prawdziwe.',
+  match: 'Kliknij element po lewej, potem pasujący po prawej. Pary dostaną ten sam kolor i numer. Kliknięcie połączonego elementu rozłącza parę.',
+  sort: 'Kliknij żeton, a potem kategorię, do której należy. Kliknięcie żetonu w kategorii odkłada go z powrotem.',
+  order: 'Ustaw kroki strzałkami ↑ ↓ w kolejności od pierwszego (na górze) do ostatniego.',
+  kol: 'Pisz własnymi słowami, jak na kartce. Po każdym kroku odsłonisz wzorzec, zobaczysz, które słowa-klucze trafiłeś, i sam ocenisz swoją odpowiedź.',
+  recall: 'Wpisz nazwy albo symbole, oddzielając je przecinkami (np. „kobalamina, B9, miedź, wit. C”). Za składnik ze słabymi dowodami dostajesz pół punktu, a za błędny tracisz pół punktu.',
+};
+function render() {
+  const T = TASKS[S.ids[S.cur]], top = TOPICS[T.tp];
+  document.documentElement.style.setProperty('--acc', top.col);
+  topbar();
+  $('meta').innerHTML = `<span class="tag" style="background:${top.col}">${esc(top.name)} · ${top.q}</span><span class="type">${TYPES[T.t]}</span>` + (S.mode === 2 ? `<span class="turn" style="color:var(--p${player() + 1})">Teraz: ${esc(S.names[player()])}</span>` : '');
+  $('q').innerHTML = T.q;
+  $('fb').innerHTML = ''; $('check').hidden = T.t === 'kol'; $('giveup').hidden = false; $('next').hidden = true;
+  $('hintBtn').hidden = !T.hint; $('hintBtn').disabled = false;
+  st = { checked: false, hinted: false };
+  const B = $('body');
+  const how = `<p class="hint">${HOWTO[T.t]}</p>`;
+  if (T.t === 'mc' || T.t === 'case' || T.t === 'odd') {
+    st.order = shuffle(T.o.map((_, i) => i)); st.sel = null;
+    B.innerHTML = how + `<div class="opts">${st.order.map((oi, k) => `<button class="opt" data-i="${oi}"><span class="L">${'ABCD'[k]}</span><span>${T.o[oi][0]}</span></button>`).join('')}</div>`;
+  } else if (T.t === 'tf') {
+    st.sel = null;
+    B.innerHTML = how + `<div class="tf"><button class="opt" data-v="1">Prawda</button><button class="opt" data-v="0">Fałsz</button></div>`;
+  } else if (T.t === 'match') {
+    st.right = shuffle(T.pairs.map((_, i) => i)); st.map = {}; st.act = null;
+    B.innerHTML = how + `<div class="mgrid"><div class="mcol" id="ml"></div><div class="mcol" id="mr"></div></div>`;
+    drawMatch(T);
+  } else if (T.t === 'sort') {
+    st.items = shuffle(T.items.map((_, i) => i)); st.place = {}; st.act = null;
+    B.innerHTML = how + `<div class="pool" id="spool"></div><div class="buckets" id="sb"></div>`;
+    drawSort(T);
+  } else if (T.t === 'order') {
+    let o = shuffle(T.steps.map((_, i) => i)); if (o.every((v, i) => v === i)) o = o.reverse(); st.ord = o;
+    B.innerHTML = how + `<div class="olist" id="ol"></div>`;
+    drawOrder(T);
+  } else if (T.t === 'kol') {
+    st.k = { comp: T.free ? null : T.c, tries: 0, s1: T.free ? null : 1, txt: { fn: '', df: '' }, rev: {}, rate: {}, msg: '' };
+    B.innerHTML = how + '<div id="kolSteps"></div>';
+    drawKol(T);
+  } else if (T.t === 'recall') {
+    B.innerHTML = `<span class="need">Wymagane minimum: ${T.need}</span>` + how + `<div id="hintSlot"></div><textarea id="rta" placeholder="np. B12, kwas foliowy, miedź…"></textarea>`;
+    setTimeout(() => { const t = $('rta'); if (t) t.focus({ preventScroll: true }); }, 50);
+  }
+  if (T.t !== 'recall') $('body').insertAdjacentHTML('afterbegin', '<div id="hintSlot"></div>');
+  save();
+}
+function colOf(i) { return PCOL[i % PCOL.length]; }
+function drawMatch(T) {
+  $('ml').innerHTML = T.pairs.map((p, i) => { const c = st.map[i] !== undefined ? colOf(i) : ''; return `<button class="mi left ${st.act === i ? 'act' : ''} ${st.res ? (st.res[i] ? 'good' : 'wrong') : ''}" data-l="${i}" ${c && !st.res ? `style="border-color:${c}"` : ''}>${p[0]}${c ? `<span class="badge" style="background:${c}">${i + 1}</span>` : ''}</button>`; }).join('');
+  $('mr').innerHTML = st.right.map(ri => { const li = Object.keys(st.map).find(k => st.map[k] === ri); const c = li !== undefined ? colOf(+li) : ''; let cls = ''; if (st.res && li !== undefined) cls = st.res[li] ? 'good' : 'wrong'; return `<button class="mi ${cls}" data-r="${ri}" ${c && !st.res ? `style="border-color:${c}"` : ''}>${T.pairs[ri][1]}${c ? `<span class="badge" style="background:${c}">${+li + 1}</span>` : ''}</button>`; }).join('');
+}
+function drawSort(T) {
+  const inPool = st.items.filter(i => st.place[i] === undefined);
+  const tok = i => `<button class="tok ${st.act === i ? 'act' : ''} ${st.res ? (st.res[i] ? 'good' : 'wrong') : ''}" data-s="${i}">${T.items[i][0]}</button>`;
+  $('spool').innerHTML = inPool.length ? inPool.map(tok).join('') : '<span class="mute">Wszystko rozłożone. Kliknij „Sprawdź”.</span>';
+  $('sb').innerHTML = T.buckets.map((b, bi) => `<div class="bucket ${st.act !== null && st.act !== undefined ? 'hot' : ''}" data-b="${bi}" role="button" tabindex="0"><h4>${b}</h4><div class="in">${st.items.filter(i => st.place[i] === bi).map(tok).join('')}</div></div>`).join('');
+}
+function drawOrder(T) {
+  $('ol').innerHTML = st.ord.map((si, k) => `<div class="oit ${st.res ? (si === k ? 'good' : 'wrong') : ''}"><span class="n">${k + 1}</span><span>${T.steps[si][0]}</span><span class="mv"><button data-u="${k}" aria-label="w górę" ${k === 0 || st.checked ? 'disabled' : ''}>↑</button><button data-d="${k}" aria-label="w dół" ${k === st.ord.length - 1 || st.checked ? 'disabled' : ''}>↓</button></span></div>`).join('');
+}
+
+$('body').addEventListener('keydown', e => {
+  const T = TASKS[S.ids[S.cur]]; if (T.t === 'kol' && e.target.id === 'kIn' && e.key === 'Enter') { e.preventDefault(); kolPick(T); }
+});
+$('body').addEventListener('click', e => {
+  const T = TASKS[S.ids[S.cur]]; if (st.checked) return;
+  if (T.t === 'kol') {
+    if (e.target.closest('#kOk')) { kolPick(T); return; }
+    const sh = e.target.closest('[data-kshow]'); if (sh) { const key = sh.dataset.kshow; const el = $('kt_' + key); if (el) st.k.txt[key] = el.value; st.k.rev[key] = true; drawKol(T); return; }
+    const rt = e.target.closest('[data-krate]'); if (rt) { st.k.rate[rt.dataset.krate] = +rt.dataset.v; if (rt.dataset.krate === 'df') evaluate(false); else drawKol(T); return; }
+    return;
+  }
+  if (T.t === 'mc' || T.t === 'case' || T.t === 'odd' || T.t === 'tf') {
+    const b = e.target.closest('.opt'); if (!b) return;
+    st.sel = T.t === 'tf' ? b.dataset.v === '1' : +b.dataset.i;
+    [...$('body').querySelectorAll('.opt')].forEach(x => x.classList.toggle('sel', x === b));
+    return;
+  }
+  if (T.t === 'match') {
+    const l = e.target.closest('[data-l]'), r = e.target.closest('[data-r]');
+    if (l) { const i = +l.dataset.l; if (st.map[i] !== undefined) { delete st.map[i]; st.act = null; } else st.act = st.act === i ? null : i; drawMatch(T); return; }
+    if (r) { const ri = +r.dataset.r; const owner = Object.keys(st.map).find(k => st.map[k] === ri);
+      if (owner !== undefined && st.act === null) { delete st.map[owner]; drawMatch(T); return; }
+      if (st.act !== null) { if (owner !== undefined) delete st.map[owner]; st.map[st.act] = ri; st.act = null; drawMatch(T); } return; }
+  }
+  if (T.t === 'sort') {
+    const tk = e.target.closest('[data-s]'), bk = e.target.closest('[data-b]');
+    if (bk && st.act !== null && st.act !== undefined && !(tk && +tk.dataset.s === st.act)) { st.place[st.act] = +bk.dataset.b; st.act = null; drawSort(T); return; }
+    if (tk) { const i = +tk.dataset.s; if (st.place[i] !== undefined) { delete st.place[i]; st.act = null; } else st.act = st.act === i ? null : i; drawSort(T); }
+    return;
+  }
+  if (T.t === 'order') {
+    const u = e.target.closest('[data-u]'), d = e.target.closest('[data-d]');
+    if (u) { const k = +u.dataset.u; [st.ord[k - 1], st.ord[k]] = [st.ord[k], st.ord[k - 1]]; drawOrder(T); }
+    if (d) { const k = +d.dataset.d; [st.ord[k + 1], st.ord[k]] = [st.ord[k], st.ord[k + 1]]; drawOrder(T); }
+  }
+});
+
+$('hintBtn').addEventListener('click', () => {
+  const T = TASKS[S.ids[S.cur]]; if (!T.hint || st.hinted) return; st.hinted = true;
+  $('hintSlot').innerHTML = `<div class="hintbox"><b>Podpowiedź:</b> ${T.hint}</div>`; $('hintBtn').disabled = true;
+});
+
+// ---------- kolokwium (pisemne) ----------
+const normT = s => s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l');
+const hasStem = (t, st0) => { const x = normT(st0); if (x.length <= 3) return new RegExp('(^|[^a-z0-9])' + x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z0-9])').test(t); return t.includes(x); };
+const RATE = [[1, 'Dobrze'], [0.5, 'Częściowo'], [0, 'Źle']];
+function kolSecDef(T, key) { const e = KOL[T.tp][st.k.comp]; return key === 'fn' ? { model: e.fn, groups: e.fk, need: e.fnn || Math.min(2, e.fk.length), title: 'Funkcja biochemiczna' } : { model: e.df, groups: e.dk, need: e.dn || Math.min(2, e.dk.length), title: 'Skutki niedoboru' + ((KOL_EXCESS[T.tp] || []).includes(st.k.comp) ? ' (lub nadmiaru)' : '') }; }
+function kwCheck(text, groups) { const t = normT(text); return groups.map(g => g[1].some(x => hasStem(t, x))); }
+function suggest(hits, need) { const h = hits.filter(Boolean).length; return h >= need ? 1 : h >= 1 ? 0.5 : 0; }
+function kolSection(T, key, n) {
+  const k = st.k, d = kolSecDef(T, key);
+  let h = `<div class="kcard"><div class="kh"><span class="kn">${n}</span>${d.title}</div>`;
+  if (!k.rev[key]) {
+    h += `<textarea class="ktxt" id="kt_${key}" placeholder="Napisz jak na kolokwium: enzym lub forma aktywna, co robi…">${esc(k.txt[key])}</textarea><div class="actions" style="margin-top:8px"><button class="btn pri" data-kshow="${key}">Pokaż wzorzec i oceń się</button></div>`;
+  } else {
+    const hits = kwCheck(k.txt[key], d.groups), sug = suggest(hits, d.need);
+    h += `<div class="kyour"><span class="mute">Twoja odpowiedź:</span> ${k.txt[key].trim() ? esc(k.txt[key]) : '<i class="mute">(pusto)</i>'}</div>
+      <div class="kmodel"><b>Wzorcowa odpowiedź:</b> ${d.model}</div>
+      <div class="kkw"><span class="mute">Słowa-klucze (wystarczy ${d.need} z ${d.groups.length}):</span> ${d.groups.map((g, i) => `<span class="rt ${hits[i] ? 'g' : 'm'}">${hits[i] ? '✓' : '○'} ${g[0]}</span>`).join('')}</div>`;
+    if (k.rate[key] === undefined) {
+      h += `<p class="hint" style="margin:10px 0 6px">Oceń się uczciwie. Liczy się sens, nie dokładne słowa. Sugestia na podstawie słów-kluczy jest wyróżniona.</p><div class="rates">${RATE.map(r => `<button class="btn rate ${r[0] === sug ? 'sug' : ''}" data-krate="${key}" data-v="${r[0]}">${r[1]}${r[0] === sug ? ' <small>(sugestia)</small>' : ''}</button>`).join('')}</div>`;
+    } else h += `<p class="kdone">Twoja ocena: <b>${RATE.find(r => r[0] === k.rate[key])[1]}</b></p>`;
+  }
+  return h + '</div>';
+}
+function drawKol(T) {
+  const k = st.k; let h = '', n = 1;
+  ['fn', 'df'].forEach(key => { const el = document.getElementById('kt_' + key); if (el) k.txt[key] = el.value; });
+  if (T.free) {
+    h += `<div class="kcard"><div class="kh"><span class="kn">${n++}</span>Składnik</div>` + (k.comp ? `<p class="kdone">✓ <b>${lab(k.comp)}</b>${k.tries ? ` <span class="mute">(za ${k.tries + 1}. podejściem)</span>` : ''}</p>` :
+      `<div class="krow"><input type="text" id="kIn" placeholder="np. B12, miedź, wit. C" autocomplete="off" aria-label="Składnik"><button class="btn pri" id="kOk">Zatwierdź</button></div>${k.msg ? `<div class="kmsg">${k.msg}</div>` : ''}`) + '</div>';
+  } else h += `<div class="kcard"><div class="kh">Składnik: <b style="margin-left:6px">${lab(k.comp)}</b></div></div>`;
+  if (k.comp) {
+    h += kolSection(T, 'fn', n++);
+    if (k.rate.fn !== undefined) h += kolSection(T, 'df', n++);
+  }
+  $('kolSteps').innerHTML = h;
+  const focusEl = !k.comp ? $('kIn') : (k.rate.fn === undefined ? (k.rev.fn ? null : $('kt_fn')) : (k.rev.df ? null : $('kt_df')));
+  if (focusEl) setTimeout(() => focusEl.focus({ preventScroll: true }), 30);
+}
+function kolPick(T) {
+  const k = st.k, v = ($('kIn').value || '').trim(); if (!v) return;
+  const id = parseRecall(v).ids[0];
+  const rec = TASKS.find(t => t.t === 'recall' && t.tp === T.tp) || { ok: [], weak: [] };
+  if (id && KOL[T.tp][id]) { k.comp = id; k.s1 = k.tries === 0 ? 1 : k.tries === 1 ? 0.5 : 0; k.msg = ''; }
+  else if (id === 'Fe' && T.tp === 'A') k.msg = 'Żelazo jest oczywiste i polecenie kazało je pominąć. Wybierz inny składnik (bez kary).';
+  else if (id && (rec.ok.includes(id) || (rec.weak || []).includes(id))) k.msg = `${lab(id)} pasuje do tematu, ale ${(rec.weak || []).includes(id) ? 'ma słabe dowody' : 'to składnik drugiego planu'}. Do ćwiczenia wybierz pewniaka, bo taki lepiej wypada na kolokwium (bez kary).`;
+  else { k.tries++; k.msg = `✗ ${id ? lab(id) : '„' + esc(v) + '”'}: ${id ? 'nie pasuje do tego tematu' : 'nie rozpoznałem nazwy'}. Spróbuj jeszcze raz.` + (k.tries >= 2 ? `<br>Pewniaki: ${Object.keys(KOL[T.tp]).map(lab).join(', ')}.` : ''); }
+  drawKol(T);
+}
+function kolResult(T, gave) {
+  const k = st.k;
+  if (gave) {
+    const comps = k.comp ? [k.comp] : Object.keys(KOL[T.tp]);
+    return { score: 0, summary: k.comp ? '' : 'Oto wszystkie pewniaki do tego tematu: każdy z funkcją i skutkiem niedoboru.', bdTitle: 'Wzorcowa odpowiedź', mem: '',
+      bd: comps.map(c => { const e = KOL[T.tp][c]; return item('g', '→', lab(c), `<b>Funkcja:</b> ${e.fn}<br><b>Niedobór:</b> ${e.df}`); }).join('') };
+  }
+  const e = KOL[T.tp][k.comp], parts = (T.free ? [k.s1] : []).concat([k.rate.fn, k.rate.df]);
+  const score = parts.reduce((a, b) => a + b, 0) / parts.length;
+  const lbl = v => RATE.find(r => r[0] === v)[1].toLowerCase();
+  const bd = (T.free ? item(k.s1 >= 1 ? 'g' : 'w', k.s1 >= 1 ? '✓' : '~', `Składnik: ${lab(k.comp)}`, k.s1 >= 1 ? 'Trafiony za pierwszym razem.' : 'Trafiony za kolejnym podejściem.') : '') +
+    item(k.rate.fn >= 1 ? 'g' : k.rate.fn > 0 ? 'w' : 'b', '①', `Funkcja biochemiczna: ${lbl(k.rate.fn)}`, e.fn) +
+    item(k.rate.df >= 1 ? 'g' : k.rate.df > 0 ? 'w' : 'b', '②', `Skutki niedoboru: ${lbl(k.rate.df)}`, e.df);
+  return { score, summary: `Twoja samoocena: ${Math.round(score * 100)}%.`, bdTitle: 'Podsumowanie', bd,
+    mem: `<b>${lab(k.comp)}</b> ${KOL_PHRASE[T.tp]}: ${e.fk.map(g => g[0]).join(' · ')} <b>→</b> ${e.dk.map(g => g[0]).join(' · ')}` };
+}
+
+// ---------- feedback ----------
+const item = (cls, ic, head, sub) => `<div class="it ${cls}"><span class="ic">${ic}</span><span><span class="h">${head}</span>${sub ? `<span class="s">${sub}</span>` : ''}</span></div>`;
+function feedback(T, score, summary, bdTitle, bd, gave) {
+  const cls = score >= 0.999 ? 'ok' : score > 0 ? 'part' : 'bad';
+  const head = gave ? 'Odpowiedź pokazana' : score >= 0.999 ? '✓ Dobrze!' : score > 0 ? `Częściowo: ${Math.round(score * 100)}%` : '✗ Źle';
+  $('fb').innerHTML = `<div class="fb ${gave ? 'part' : cls}"><p class="v">${head}</p>${summary ? `<p style="margin:0">${summary}</p>` : ''}
+    ${bd ? `<h5>${bdTitle}</h5><div class="bd">${bd}</div>` : ''}
+    ${T.ex ? `<h5>Zrozum</h5><div class="exbox">${T.ex}</div>` : ''}
+    ${T.mem ? `<div class="mem"><b>Zapamiętaj</b>${T.mem}</div>` : ''}
+    <div id="glossSlot"></div></div>`;
+  const plain = (T.q + ' ' + $('fb').innerHTML + ' ' + $('body').innerText).replace(/<[^>]+>/g, ' ');
+  const hits = GLOSS.filter(g => new RegExp(g[1]).test(plain));
+  if (hits.length) {
+    const open = hits.length <= 4 ? ' open' : '';
+    $('glossSlot').innerHTML = `<h5>Słowniczek: pojęcia z tego zadania (${hits.length})</h5>` + (open ? '' : '<p class="hint" style="margin:0 0 6px">Kliknij pojęcie, żeby rozwinąć wyjaśnienie.</p>') +
+      hits.map(g => `<details class="gl"${open}><summary>${g[0]}</summary><div>${g[2]}</div></details>`).join('');
+  }
+}
+function evaluate(gave) {
+  const T = TASKS[S.ids[S.cur]]; let score = 0, summary = '', bd = '', bdTitle = '';
+  const warn = m => { $('fb').innerHTML = `<div class="fb part"><p class="v">${m}</p></div>`; };
+  let fbT = T;
+  if (T.t === 'kol') {
+    if (!gave && (st.k.rate.df === undefined)) return;
+    const r = kolResult(T, gave); score = r.score; summary = r.summary; bdTitle = r.bdTitle; bd = r.bd;
+    fbT = Object.assign({}, T, { ex: 'Schemat odpowiedzi na kolokwium: <b>składnik → forma aktywna lub enzym → co robi → skutek niedoboru</b>. Jedno zdanie na funkcję, jedno na niedobór, a przy każdym enzymie lub koenzymie dopisz, z jakiej witaminy pochodzi.', mem: r.mem });
+    st.k.rev = { fn: true, df: true };
+    if (gave) $('kolSteps').innerHTML = ''; else drawKol(T);
+  } else if (T.t === 'mc' || T.t === 'case' || T.t === 'odd') {
+    if (!gave && st.sel === null) return warn('Najpierw wybierz odpowiedź (albo kliknij „Nie wiem, pokaż”).');
+    score = !gave && st.sel === T.a ? 1 : 0;
+    [...$('body').querySelectorAll('.opt')].forEach(x => { const i = +x.dataset.i; if (i === T.a) x.classList.add('good'); else if (i === st.sel) x.classList.add('wrong'); });
+    bdTitle = T.t === 'odd' ? 'Dlaczego każda odpowiedź pasuje albo nie' : 'Dlaczego dobra / dlaczego zła';
+    bd = st.order.map(i => { const isA = i === T.a, mine = i === st.sel; const cls = isA ? 'g' : mine ? 'b' : 'm'; const ic = isA ? '✓' : mine ? '✗' : '·';
+      return item(cls, ic, T.o[i][0] + (mine ? '<span class="y">Twoja odpowiedź</span>' : ''), T.o[i][1]); }).join('');
+  } else if (T.t === 'tf') {
+    if (!gave && st.sel === null) return warn('Wybierz: prawda czy fałsz?');
+    score = !gave && st.sel === T.a ? 1 : 0;
+    [...$('body').querySelectorAll('.opt')].forEach(x => { const v = x.dataset.v === '1'; if (v === T.a) x.classList.add('good'); else if (v === st.sel) x.classList.add('wrong'); });
+    summary = `Poprawnie: <b>${T.a ? 'PRAWDA' : 'FAŁSZ'}</b>.`;
+  } else if (T.t === 'match') {
+    if (!gave && Object.keys(st.map).length < T.pairs.length) return warn('Połącz wszystkie pary (albo kliknij „Nie wiem, pokaż”).');
+    if (gave) { st.map = {}; T.pairs.forEach((p, i) => { st.map[i] = i; }); }
+    st.res = {}; let ok = 0; T.pairs.forEach((p, i) => { st.res[i] = st.map[i] === i; if (st.res[i]) ok++; });
+    score = gave ? 0 : ok / T.pairs.length; drawMatch(T);
+    summary = gave ? '' : `${ok} z ${T.pairs.length} par dobrze.`;
+    bdTitle = 'Poprawne pary i dlaczego';
+    bd = T.pairs.map((p, i) => { const g = st.res[i]; const yours = st.map[i] !== undefined && !g ? `<br><span style="color:var(--bad)">Ty połączyłeś z: ${T.pairs[st.map[i]][1]}</span>` : '';
+      return item(g ? 'g' : 'b', gave ? '→' : g ? '✓' : '✗', `${p[0]} → ${p[1]}`, (p[2] || '') + yours); }).join('');
+  } else if (T.t === 'sort') {
+    if (!gave && Object.keys(st.place).length < T.items.length) return warn('Rozłóż wszystkie żetony (albo kliknij „Nie wiem, pokaż”).');
+    if (gave) { st.place = {}; T.items.forEach((it, i) => { st.place[i] = Array.isArray(it[1]) ? it[1][0] : it[1]; }); st.act = null; }
+    st.res = {}; let ok = 0; T.items.forEach((it, i) => { st.res[i] = st.place[i] !== undefined && okB(it, st.place[i]); if (st.res[i]) ok++; });
+    score = gave ? 0 : ok / T.items.length; drawSort(T);
+    summary = gave ? '' : `${ok} z ${T.items.length} dobrze.`;
+    bdTitle = 'Gdzie należy każdy żeton i dlaczego';
+    bd = T.items.map((it, i) => { const g = st.res[i]; const yours = !g && st.place[i] !== undefined ? ` <span style="color:var(--bad)">(Ty: ${T.buckets[st.place[i]]})</span>` : '';
+      return item(g ? 'g' : 'b', gave ? '→' : g ? '✓' : '✗', `${it[0]} → ${bName(T, it)}${yours}`, it[2] || ''); }).join('');
+  } else if (T.t === 'order') {
+    if (gave) st.ord = T.steps.map((_, i) => i);
+    st.res = true; const ok = st.ord.filter((si, k) => si === k).length; score = gave ? 0 : ok / T.steps.length; st.checked = true; drawOrder(T);
+    summary = gave ? '' : `${ok} z ${T.steps.length} kroków na właściwym miejscu.`;
+    bdTitle = 'Poprawna kolejność, krok po kroku';
+    bd = T.steps.map((s, i) => { const where = st.ord.indexOf(i); const g = where === i;
+      return item(g ? 'g' : 'b', `${i + 1}.`, s[0] + (!g && !gave ? ` <span class="y">u Ciebie: ${where + 1}.</span>` : ''), s[1] || ''); }).join('');
+  } else if (T.t === 'recall') {
+    const val = $('rta').value;
+    if (!gave && !val.trim()) return warn('Wpisz coś (albo kliknij „Nie wiem, pokaż”).');
+    const { ids, unk } = parseRecall(gave ? '' : val);
+    const weakL = T.weak || [], neu = T.neutral || {}, no = T.no || {};
+    const good = ids.filter(i => T.ok.includes(i)), weak = ids.filter(i => weakL.includes(i)), neutral = ids.filter(i => neu[i]), bad = ids.filter(i => !T.ok.includes(i) && !weakL.includes(i) && !neu[i]);
+    const pts = good.length + 0.5 * weak.length - 0.5 * bad.length; score = gave ? 0 : Math.max(0, Math.min(1, pts / T.need));
+    if (!gave) summary = `Trafione: <b>${good.length}</b>${weak.length ? ` + ${weak.length} ze słabymi dowodami (po pół punktu)` : ''}${bad.length ? ` · błędne: ${bad.length} (minus pół punktu każde)` : ''} · wymagane: ${T.need}.`;
+    $('rta').readOnly = true;
+    bdTitle = 'Wszystkie składniki: mechanizm i skutek niedoboru';
+    const rows = [];
+    T.ok.forEach(i => { const hit = good.includes(i); rows.push(item(hit ? 'g' : 'm', hit ? '✓' : '○', lab(i) + (hit ? '<span class="y">wpisałeś</span>' : '<span class="y">nie wpisałeś</span>'), T.tab[i] || '')); });
+    weakL.forEach(i => { const hit = weak.includes(i); rows.push(item('w', '~', lab(i) + '<span class="y">słabe dowody</span>' + (hit ? '<span class="y">wpisałeś</span>' : ''), T.tab[i] || '')); });
+    neutral.forEach(i => rows.push(item('m', '–', lab(i), neu[i])));
+    bad.forEach(i => rows.push(item('b', '✗', lab(i) + '<span class="y">nie pasuje</span>', no[i] || 'Nie należy do typowej odpowiedzi na to pytanie: brak dobrze udokumentowanego związku z tym tematem. Na kolokwium to strata czasu albo punkt ujemny.')));
+    unk.forEach(u => rows.push(item('b', '?', `„${esc(u)}”`, 'Nie rozpoznałem tej nazwy. Użyj symbolu (np. Zn, B6) albo nazwy chemicznej (np. cynk, pirydoksyna).')));
+    bd = rows.join('');
+  }
+  st.checked = true;
+  S.res[S.ids[S.cur]] = { p: player(), score, gave: !!gave, hint: st.hinted };
+  feedback(fbT, score, summary, bdTitle, bd, gave);
+  $('check').hidden = true; $('giveup').hidden = true; $('hintBtn').hidden = true; $('next').hidden = false;
+  $('next').textContent = S.cur === S.ids.length - 1 ? 'Zobacz wynik →' : (S.mode === 2 ? `Dalej: kolej ${S.names[(S.cur + 1) % 2]} →` : 'Dalej →');
+  topbar(); save(); $('next').focus({ preventScroll: true });
+  $('fb').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+$('check').addEventListener('click', () => evaluate(false));
+$('giveup').addEventListener('click', () => evaluate(true));
+$('next').addEventListener('click', () => { if (S.cur === S.ids.length - 1) { S.done = true; save(); showEnd(); } else { S.cur++; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); } });
+$('quit').addEventListener('click', () => { S.done = true; save(); showEnd(); });
+document.addEventListener('keydown', e => {
+  if ($('vTask').hidden || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); if (!$('next').hidden) $('next').click(); else $('check').click(); }
+});
+
+// ---------- end ----------
+function showEnd() {
+  $('vTask').hidden = true; $('vStart').hidden = true; $('vEnd').hidden = false; window.scrollTo(0, 0);
+  const sc = scores();
+  $('scores').innerHTML = S.names.map((n, p) => `<div class="sc p${p + 1}"><div class="mute">${esc(n)}</div><div class="big">${sc[p].n ? Math.round(100 * sc[p].pts / sc[p].n) : 0}%</div><div>${fmt(sc[p].pts)} pkt z ${sc[p].n} zadań</div></div>`).join('');
+  const byT = {};
+  Object.entries(S.res).forEach(([id, r]) => { const tp = TASKS[id].tp; (byT[tp] = byT[tp] || { s: 0, n: 0 }); byT[tp].s += r.score; byT[tp].n++; });
+  const rows = Object.entries(byT).map(([tp, v]) => ({ tp, r: v.s / v.n, n: v.n })).sort((a, b) => a.r - b.r);
+  $('topicRows').innerHTML = rows.map(x => `<div class="trow"><span><b>${esc(TOPICS[x.tp].name)}</b> <span class="mute">${TOPICS[x.tp].q}</span></span><div class="tbar"><i style="width:${Math.round(x.r * 100)}%;background:${TOPICS[x.tp].col}"></i></div><span class="v2">${Math.round(x.r * 100)}% <span class="mute">(${x.n})</span></span></div>`).join('') || '<p class="mute">Brak rozwiązanych zadań.</p>';
+  const wrong = Object.entries(S.res).filter(([, r]) => r.score < 0.999).map(([id]) => +id);
+  $('endActions').innerHTML = `<button class="btn pri" id="again" ${wrong.length ? '' : 'disabled'}>Powtórz zadania do poprawy (${wrong.length})</button><button class="btn" id="newq">Nowa sesja</button>`;
+  $('wrongList').innerHTML = wrong.length ? wrong.map(id => { const T = TASKS[id]; return `<div class="wl"><span class="tag" style="background:${TOPICS[T.tp].col}">${esc(TOPICS[T.tp].name)}</span> <span class="type">${TYPES[T.t]}</span> ${S.res[id].gave ? 'pokazana odpowiedź' : Math.round(S.res[id].score * 100) + '%'}<div style="margin-top:6px">${T.q}</div>${T.mem ? `<div class="mem" style="--acc:${TOPICS[T.tp].col}"><b>Zapamiętaj</b>${T.mem}</div>` : ''}</div>`; }).join('') : '<p class="mute">Wszystko na 100%.</p>';
+  $('again').onclick = () => { mode = S.mode; $('n1').value = S.names[0]; if (S.names[1]) $('n2').value = S.names[1]; begin(shuffle(wrong)); };
+  $('newq').onclick = () => { $('vEnd').hidden = true; $('vStart').hidden = false; $('resume').hidden = true; };
+}
+}
+
+</script>
+</body>
+</html>
