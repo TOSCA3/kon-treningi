@@ -145,11 +145,16 @@ textarea{width:100%;min-height:110px;font:inherit;font-size:16px;padding:12px;bo
 .btn.rate.sug{border:2px solid var(--ink);box-shadow:0 0 0 3px var(--panel)}
 .btn.rate small{font-weight:600;color:var(--mute)}
 .kdone{margin:4px 0 0;font-size:15px}
+
+.kt-bar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:flex-end;font-size:14px;padding-top:14px;min-height:24px}
+.kt-mute{color:var(--mute)}
+.kt-link{font:inherit;font-weight:800;background:none;border:0;padding:0;color:var(--ink);text-decoration:underline;cursor:pointer}
 </style>
 </head>
 <body>
 
 <section id="vStart" class="wrap">
+  <div class="kt-bar" id="ktBar"></div>
   <div class="hero">
     <div>
       <h1>KON 4: kreatywny trening przed kolokwium</h1>
@@ -166,7 +171,8 @@ textarea{width:100%;min-height:110px;font:inherit;font-size:16px;padding:12px;bo
       <div class="field"><span class="lab">Rodzaje zadań</span><div class="seg" id="types"></div></div>
       <div class="field"><span class="lab">Ile zadań</span>
         <div class="seg" id="nSeg"><button data-n="20" aria-pressed="false">20</button><button data-n="40" aria-pressed="false">40</button><button data-n="999" aria-pressed="true">wszystkie</button></div></div>
-      <div class="row"><button class="btn pri" id="go">Start</button><button class="btn" id="resume" hidden>Wznów</button></div>
+      <div class="row"><button class="btn pri" id="go">Start</button><button class="btn" id="resume" hidden>Wznów</button><button class="btn" id="reviewMine" hidden></button></div>
+      <p class="mute" id="acctNote" hidden style="font-size:14px">Jesteś zalogowany: postęp i wyniki zapisują się na Twoim koncie. W trybie 2 graczy zapisują się tylko wyniki gracza 1.</p>
       <p class="mute" id="count" style="font-size:14px"></p>
     </div>
   </div>
@@ -198,6 +204,8 @@ textarea{width:100%;min-height:110px;font:inherit;font-size:16px;padding:12px;bo
   <div id="wrongList"></div>
 </section>
 
+<script src="../vendor/supabase.js"></script>
+<script src="../auth.js"></script>
 <script>
 {
 const TOPICS = {
@@ -1308,7 +1316,9 @@ const KEY = 'kon4-creative-v2';
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+const TRAINING = 'kon4-witaminy';
+const logged = () => !!(window.KT && KT.user);
+const save = () => { if (!S) return; S.ts = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} if (logged()) KT.saveProgress(TRAINING, S); };
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } };
 const fmt = x => (Math.round(x * 10) / 10).toString().replace('.', ',');
 const okB = (it, b) => Array.isArray(it[1]) ? it[1].includes(b) : it[1] === b;
@@ -1333,8 +1343,26 @@ function seg(id, attr, fn) { $(id).addEventListener('click', e => { const b = e.
 seg('modeSeg', 'm', v => { mode = +v; $('n2').hidden = mode === 1; });
 seg('nSeg', 'n', v => { nPick = +v; });
 upCount();
-const old = load(); if (old && !old.done && old.ids && old.ids.every(i => TASKS[i])) $('resume').hidden = false;
-$('resume').addEventListener('click', () => { S = load(); showTask(); });
+const validState = x => x && !x.done && Array.isArray(x.ids) && x.ids.length && x.ids.every(i => TASKS[i]);
+let resumeState = validState(load()) ? load() : null;
+if (resumeState) $('resume').hidden = false;
+$('resume').addEventListener('click', () => { if (!resumeState) return; S = resumeState; showTask(); });
+// Konto: pasek, imię gracza 1, postęp z chmury, zadania do poprawy ze wszystkich sesji
+(async () => {
+  if (!window.KT) return;
+  KT.renderBar($('ktBar'));
+  await KT.ready;
+  if (!KT.user) return;
+  $('n1').value = KT.name(); $('n1').readOnly = true; $('n1').title = 'Gracz 1 to zalogowane konto';
+  $('n2').placeholder = 'Gracz 2 (gość)';
+  $('acctNote').hidden = false;
+  const remote = await KT.loadProgress(TRAINING);
+  if (remote && validState(remote.state) && (!resumeState || (remote.state.ts || 0) > (resumeState.ts || 0))) { resumeState = remote.state; $('resume').hidden = false; }
+  const rows = await KT.attempts(TRAINING);
+  const ids = KT.toReview(rows).filter(i => TASKS[i]);
+  if (ids.length) { const b = $('reviewMine'); b.hidden = false; b.textContent = `Moje zadania do poprawy (${ids.length})`; b.onclick = () => begin(shuffle(ids)); }
+  if (rows.length) { const uniq = new Set(rows.map(r => r.task_id)).size; $('acctNote').textContent = `Twoje konto: ${uniq} z ${TASKS.length} zadań już rozwiązanych, średnio ${Math.round(100 * rows.reduce((a, r) => a + r.score, 0) / rows.length)}%. W trybie 2 graczy zapisują się tylko wyniki gracza 1.`; }
+})();
 $('go').addEventListener('click', () => { let ids = shuffle(pool()); if (!ids.length) return; begin(ids.slice(0, nPick)); });
 function begin(ids) {
   S = { mode, names: [($('n1').value || 'Gracz 1').trim(), ($('n2').value || 'Gracz 2').trim()].slice(0, mode), ids, cur: 0, res: {}, done: false };
@@ -1622,6 +1650,7 @@ function evaluate(gave) {
   }
   st.checked = true;
   S.res[S.ids[S.cur]] = { p: player(), score, gave: !!gave, hint: st.hinted };
+  if (logged() && player() === 0) KT.saveAttempt(TRAINING, S.ids[S.cur], score, gave);
   feedback(fbT, score, summary, bdTitle, bd, gave);
   $('check').hidden = true; $('giveup').hidden = true; $('hintBtn').hidden = true; $('next').hidden = false;
   $('next').textContent = S.cur === S.ids.length - 1 ? 'Zobacz wynik →' : (S.mode === 2 ? `Dalej: kolej ${S.names[(S.cur + 1) % 2]} →` : 'Dalej →');
@@ -1650,7 +1679,7 @@ function showEnd() {
   $('endActions').innerHTML = `<button class="btn pri" id="again" ${wrong.length ? '' : 'disabled'}>Powtórz zadania do poprawy (${wrong.length})</button><button class="btn" id="newq">Nowa sesja</button>`;
   $('wrongList').innerHTML = wrong.length ? wrong.map(id => { const T = TASKS[id]; return `<div class="wl"><span class="tag" style="background:${TOPICS[T.tp].col}">${esc(TOPICS[T.tp].name)}</span> <span class="type">${TYPES[T.t]}</span> ${S.res[id].gave ? 'pokazana odpowiedź' : Math.round(S.res[id].score * 100) + '%'}<div style="margin-top:6px">${T.q}</div>${T.mem ? `<div class="mem" style="--acc:${TOPICS[T.tp].col}"><b>Zapamiętaj</b>${T.mem}</div>` : ''}</div>`; }).join('') : '<p class="mute">Wszystko na 100%.</p>';
   $('again').onclick = () => { mode = S.mode; $('n1').value = S.names[0]; if (S.names[1]) $('n2').value = S.names[1]; begin(shuffle(wrong)); };
-  $('newq').onclick = () => { $('vEnd').hidden = true; $('vStart').hidden = false; $('resume').hidden = true; };
+  $('newq').onclick = () => { $('vEnd').hidden = true; $('vStart').hidden = false; $('resume').hidden = true; resumeState = null; };
 }
 }
 

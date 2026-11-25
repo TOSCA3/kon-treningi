@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logowanie: treningi przed kolokwiami</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#fff,#111418);--panel:light-dark(#f3f5f7,#1a1f25);--line:light-dark(#d8dde3,#2c333b);--ink:light-dark(#14202b,#e9edf1);--mute:light-dark(#5d6873,#9aa5b0);--bad:light-dark(#c62828,#f26d6d);--bads:light-dark(#fde7e7,#3a1616);--ok:light-dark(#1b8a4c,#4ccb84);--oks:light-dark(#e3f6eb,#11331f)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Manrope,system-ui,sans-serif}
+.wrap{max-width:440px;margin:0 auto;padding:48px 18px 60px}
+h1{font-size:30px;line-height:1.1;margin:0 0 6px;font-weight:800}
+.mute{color:var(--mute)}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--panel);padding:5px;border-radius:12px;margin:22px 0 18px}
+.tabs button{border:0;border-radius:9px;padding:10px;font:inherit;font-weight:800;background:transparent;color:var(--mute);cursor:pointer;min-height:44px}
+.tabs button[aria-selected=true]{background:var(--bg);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+label{display:block;font-weight:700;margin:12px 0 5px;font-size:15px}
+input{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-height:46px}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid #1f6fd1;outline-offset:2px}
+.btn{display:block;width:100%;margin-top:18px;border:0;border-radius:12px;padding:12px;font:inherit;font-weight:800;background:var(--ink);color:var(--bg);cursor:pointer;min-height:48px}
+.btn:disabled{opacity:.5;cursor:default}
+.msg{margin-top:14px;border-radius:10px;padding:10px 12px;font-size:15px}
+.msg.bad{background:var(--bads);border:1px solid var(--bad)}.msg.ok{background:var(--oks);border:1px solid var(--ok)}
+.small{font-size:14px;color:var(--mute);margin-top:16px}
+a{color:inherit}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Treningi przed kolokwiami</h1>
+  <p class="mute">Z kontem Twój postęp i wyniki zapisują się w chmurze: zaczynasz na laptopie, kończysz na telefonie, a zadania do poprawy zbierają się ze wszystkich sesji.</p>
+
+  <div id="signedIn" hidden>
+    <p class="msg ok">Jesteś zalogowany jako <b id="who"></b>.</p>
+    <button class="btn" id="goBack">Przejdź do treningów</button>
+    <button class="btn" id="out" style="background:transparent;color:var(--ink);border:1px solid var(--line)">Wyloguj</button>
+  </div>
+
+  <div id="forms">
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tLogin" aria-selected="true">Logowanie</button>
+      <button role="tab" id="tSignup" aria-selected="false">Nowe konto</button>
+    </div>
+    <form id="f" novalidate>
+      <div id="nameRow" hidden>
+        <label for="name">Imię lub pseudonim (widoczne w treningach)</label>
+        <input id="name" autocomplete="nickname" maxlength="40">
+      </div>
+      <label for="email">E-mail</label>
+      <input id="email" type="email" autocomplete="email" required>
+      <label for="pass">Hasło</label>
+      <input id="pass" type="password" autocomplete="current-password" minlength="6" required>
+      <button class="btn" id="submit" type="submit">Zaloguj się</button>
+      <div id="msg" role="status" aria-live="polite"></div>
+    </form>
+    <p class="small" id="signupNote" hidden>Hasło: co najmniej 6 znaków. Nie ma resetu hasła przez e-mail. Jeśli je zapomnisz, napisz do Artura, a zresetuje je ręcznie. Zapisujemy tylko: e-mail, wybrane imię i wyniki zadań.</p>
+    <p class="small"><a href="./" id="guest">Kontynuuj jako gość</a></p>
+  </div>
+</main>
+<script src="vendor/supabase.js"></script>
+<script src="auth.js"></script>
+<script>
+(async () => {
+  const $ = id => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const next = params.get('next') && params.get('next').startsWith(KT.root) ? params.get('next') : KT.root;
+  $('guest').href = next;
+  let mode = 'login';
+  const setMode = m => {
+    mode = m;
+    $('tLogin').setAttribute('aria-selected', m === 'login'); $('tSignup').setAttribute('aria-selected', m === 'signup');
+    $('nameRow').hidden = m !== 'signup'; $('signupNote').hidden = m !== 'signup';
+    $('submit').textContent = m === 'login' ? 'Zaloguj się' : 'Załóż konto';
+    $('pass').autocomplete = m === 'login' ? 'current-password' : 'new-password';
+    $('msg').innerHTML = '';
+  };
+  $('tLogin').onclick = () => setMode('login'); $('tSignup').onclick = () => setMode('signup');
+  const say = (t, ok) => { $('msg').innerHTML = `<div class="msg ${ok ? 'ok' : 'bad'}">${t}</div>`; };
+  const PL = e => {
+    const m = (e && e.message) || String(e);
+    if (/Invalid login credentials/i.test(m)) return 'Nieprawidłowy e-mail lub hasło.';
+    if (/already registered|already been registered/i.test(m)) return 'Konto z tym e-mailem już istnieje. Zaloguj się.';
+    if (/at least 6|Password should/i.test(m)) return 'Hasło musi mieć co najmniej 6 znaków.';
+    if (/invalid.*email|Unable to validate email/i.test(m)) return 'Nieprawidłowy adres e-mail.';
+    if (/Email not confirmed/i.test(m)) return 'E-mail niepotwierdzony. Napisz do Artura.';
+    if (/signups not allowed|Signups not allowed/i.test(m)) return 'Rejestracja jest obecnie zamknięta. Napisz do Artura.';
+    if (/rate limit/i.test(m)) return 'Za dużo prób. Odczekaj chwilę i spróbuj ponownie.';
+    if (/fetch|network/i.test(m)) return 'Brak połączenia z serwerem kont. Sprawdź internet.';
+    return 'Coś poszło nie tak: ' + m.replace(/[<>]/g, '');
+  };
+
+  if (!KT.sb) { say('Serwer kont jest niedostępny. Możesz kontynuować jako gość.'); $('submit').disabled = true; return; }
+  await KT.ready;
+  if (KT.user) { $('forms').hidden = true; $('signedIn').hidden = false; $('who').textContent = KT.name(); }
+  $('goBack').onclick = () => { location.href = next; };
+  $('out').onclick = KT.signOut;
+
+  $('f').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const email = $('email').value.trim(), password = $('pass').value, name = $('name').value.trim();
+    if (!email || !password) return say('Wpisz e-mail i hasło.');
+    if (mode === 'signup' && !name) return say('Wpisz imię lub pseudonim.');
+    $('submit').disabled = true;
+    try {
+      if (mode === 'login') {
+        const { error } = await KT.sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      } else {
+        const { data, error } = await KT.sb.auth.signUp({ email, password, options: { data: { display_name: name } } });
+        if (error) throw error;
+        if (!data.session) { say('Konto założone, ale wymaga potwierdzenia e-mailem. Napisz do Artura.'); $('submit').disabled = false; return; }
+        const r = await KT.sb.from('profiles').upsert({ id: data.user.id, display_name: name });
+        if (r.error) console.warn(r.error);
+      }
+      say('Gotowe! Przenoszę do treningów…', true);
+      setTimeout(() => { location.href = next; }, 500);
+    } catch (e) { say(PL(e)); $('submit').disabled = false; }
+  });
+})();
+</script>
+</body>
+</html>

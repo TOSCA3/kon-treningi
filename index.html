@@ -22,24 +22,42 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.08;margin:0 0 10px;font-weight:8
 .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .meta span{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--panel)}
 .go{font-weight:800;white-space:nowrap}
+
+.kt-bar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:flex-end;font-size:14px;margin-bottom:26px;min-height:24px}
+.kt-mute{color:var(--mute)}
+.kt-link{font:inherit;font-weight:800;background:none;border:0;padding:0;color:var(--ink);text-decoration:underline;cursor:pointer}
+.stats{margin-top:8px;font-size:14px;font-weight:700}
 footer{margin-top:40px;color:var(--mute);font-size:14px}
 @media(max-width:520px){.card{grid-template-columns:6px minmax(0,1fr)}.go{display:none}}
 </style>
 </head>
 <body>
 <main class="wrap">
+  <div class="kt-bar" id="ktBar"></div>
   <h1>Treningi przed kolokwiami</h1>
   <p class="lead">Interaktywne treningi do nauki we dwóch albo w pojedynkę: lekcje, dopasowywanie, sortowanie, przypadki kliniczne i zadania pisemne jak na kolokwium. Odpowiedzi oparte na sile dowodów, a nie na studenckich kluczach.</p>
   <div class="list" id="list"></div>
   <footer>Postęp zapisuje się w Twojej przeglądarce. Materiały pomocnicze do nauki, nie zastępują podręcznika ani zajęć.</footer>
 </main>
+<script src="vendor/supabase.js"></script>
+<script src="auth.js"></script>
 <script>
 // Spis treningów: najnowsze na górze. Dodając trening, dopisz obiekt na początku tablicy.
 const TRAININGS = [
-  { href: 'kon4-witaminy/', title: 'KON 4: witaminy i pierwiastki', desc: 'Pytania 1–5, 10 i 23: anemia, kości, układ nerwowy, skóra, krzepnięcie, ciąża, weganie.', tags: ['150 zadań', 'jak na kolokwium', 'słowniczek pojęć', '2 graczy'], col: '#c62828', date: 'listopad 2026' },
+  { id: 'kon4-witaminy', href: 'kon4-witaminy/', title: 'KON 4: witaminy i pierwiastki', desc: 'Pytania 1–5, 10 i 23: anemia, kości, układ nerwowy, skóra, krzepnięcie, ciąża, weganie.', tags: ['150 zadań', 'jak na kolokwium', 'słowniczek pojęć', '2 graczy'], col: '#c62828', date: 'listopad 2026' },
 ];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-document.getElementById('list').innerHTML = TRAININGS.map(t => `<a class="card" href="${esc(t.href)}"><span class="bar" style="background:${esc(t.col)}"></span><div><h2>${esc(t.title)}</h2><p>${esc(t.desc)}</p><div class="meta">${t.tags.map(x => `<span>${esc(x)}</span>`).join('')}<span>${esc(t.date)}</span></div></div><span class="go">Otwórz →</span></a>`).join('');
+document.getElementById('list').innerHTML = TRAININGS.map(t => `<a class="card" href="${esc(t.href)}"><span class="bar" style="background:${esc(t.col)}"></span><div><h2>${esc(t.title)}</h2><p>${esc(t.desc)}</p><div class="meta">${t.tags.map(x => `<span>${esc(x)}</span>`).join('')}<span>${esc(t.date)}</span></div><div class="stats" data-stats="${esc(t.id)}"></div></div><span class="go">Otwórz →</span></a>`).join('');
+(async () => {
+  KT.renderBar(document.getElementById('ktBar'));
+  await KT.ready; if (!KT.user) return;
+  const rows = await KT.attempts();
+  document.querySelectorAll('[data-stats]').forEach(el => {
+    const r = rows.filter(x => x.training === el.dataset.stats); if (!r.length) { el.textContent = 'Jeszcze nie zaczęte.'; return; }
+    const uniq = new Set(r.map(x => x.task_id)).size, avg = Math.round(100 * r.reduce((a, x) => a + x.score, 0) / r.length), rev = KT.toReview(r).length;
+    el.textContent = `Twoje wyniki: ${uniq} różnych zadań, średnio ${avg}%, do poprawy: ${rev}`;
+  });
+})();
 </script>
 </body>
 </html>
