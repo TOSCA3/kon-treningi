@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
 <title>Logowanie: treningi przed kolokwiami</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
@@ -31,10 +32,10 @@ a{color:inherit}
 <body>
 <main class="wrap">
   <h1>Treningi przed kolokwiami</h1>
-  <p class="mute">Z kontem Twój postęp i wyniki zapisują się w chmurze: zaczynasz na laptopie, kończysz na telefonie, a zadania do poprawy zbierają się ze wszystkich sesji.</p>
+  <p class="mute">Treningi są dostępne tylko dla zalogowanych osób z zaakceptowanym kontem. Po założeniu konta poczekaj, aż Artur je zaakceptuje.</p>
 
   <div id="signedIn" hidden>
-    <p class="msg ok">Jesteś zalogowany jako <b id="who"></b>.</p>
+    <p class="msg ok" id="whoMsg">Jesteś zalogowany jako <b id="who"></b>.</p>
     <button class="btn" id="goBack">Przejdź do treningów</button>
     <button class="btn" id="out" style="background:transparent;color:var(--ink);border:1px solid var(--line)">Wyloguj</button>
   </div>
@@ -56,8 +57,7 @@ a{color:inherit}
       <button class="btn" id="submit" type="submit">Zaloguj się</button>
       <div id="msg" role="status" aria-live="polite"></div>
     </form>
-    <p class="small" id="signupNote" hidden>Hasło: co najmniej 6 znaków. Nie ma resetu hasła przez e-mail. Jeśli je zapomnisz, napisz do Artura, a zresetuje je ręcznie. Zapisujemy tylko: e-mail, wybrane imię i wyniki zadań.</p>
-    <p class="small"><a href="./" id="guest">Kontynuuj jako gość</a></p>
+    <p class="small" id="signupNote" hidden>Hasło: co najmniej 6 znaków. Nie ma resetu hasła przez e-mail. Jeśli je zapomnisz, napisz do Artura, a zresetuje je ręcznie. Zapisujemy tylko: e-mail, wybrane imię i wyniki zadań. Nowe konto musi zaakceptować Artur.</p>
   </div>
 </main>
 <script src="vendor/supabase.js"></script>
@@ -67,7 +67,6 @@ a{color:inherit}
   const $ = id => document.getElementById(id);
   const params = new URLSearchParams(location.search);
   const next = params.get('next') && params.get('next').startsWith(KT.root) ? params.get('next') : KT.root;
-  $('guest').href = next;
   let mode = 'login';
   const setMode = m => {
     mode = m;
@@ -92,9 +91,9 @@ a{color:inherit}
     return 'Coś poszło nie tak: ' + m.replace(/[<>]/g, '');
   };
 
-  if (!KT.sb) { say('Serwer kont jest niedostępny. Możesz kontynuować jako gość.'); $('submit').disabled = true; return; }
+  if (!KT.sb) { say('Serwer kont jest niedostępny. Spróbuj później.'); $('submit').disabled = true; return; }
   await KT.ready;
-  if (KT.user) { $('forms').hidden = true; $('signedIn').hidden = false; $('who').textContent = KT.name(); }
+  if (KT.user) { $('forms').hidden = true; $('signedIn').hidden = false; $('who').textContent = KT.name(); if (!KT.approved()) $('whoMsg').insertAdjacentHTML('beforeend', '<br>Twoje konto czeka na akceptację.'); }
   $('goBack').onclick = () => { location.href = next; };
   $('out').onclick = KT.signOut;
 
@@ -112,8 +111,9 @@ a{color:inherit}
         const { data, error } = await KT.sb.auth.signUp({ email, password, options: { data: { display_name: name } } });
         if (error) throw error;
         if (!data.session) { say('Konto założone, ale wymaga potwierdzenia e-mailem. Napisz do Artura.'); $('submit').disabled = false; return; }
-        const r = await KT.sb.from('profiles').upsert({ id: data.user.id, display_name: name });
-        if (r.error) console.warn(r.error);
+        say('Konto założone! Czeka teraz na akceptację przez Artura. Przenoszę…', true);
+        setTimeout(() => { location.href = KT.root; }, 1200);
+        return;
       }
       say('Gotowe! Przenoszę do treningów…', true);
       setTimeout(() => { location.href = next; }, 500);

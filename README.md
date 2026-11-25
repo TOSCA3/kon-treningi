@@ -1,23 +1,13 @@
-# Treningi przed kolokwiami
+# Treningi przed kolokwiami: publiczna „skorupa”
 
-Interaktywne treningi do nauki (kierunek lekarski, UAFM Kraków), publikowane przez GitHub Pages.
+Strona: https://tosca3.github.io/kon-treningi/
 
-- Strona: https://tosca3.github.io/kon-treningi/
-- Każdy trening to jeden samodzielny plik `index.html` w osobnym folderze (np. `kon4-witaminy/`).
-- Spis treningów jest w `index.html` w katalogu głównym, w tablicy `TRAININGS` (najnowsze na górze).
-- Publikacja jest automatyczna: każdy push na gałąź `main` uruchamia `.github/workflows/pages.yml`.
+To repozytorium NIE zawiera treści treningów. Są one w prywatnym magazynie Supabase i dostaje je tylko zalogowane konto zaakceptowane przez administratora.
 
-## Konta (Supabase)
+- `index.html`: spis treningów (wczytywany z magazynu po zalogowaniu), komunikat „czeka na akceptację”.
+- `login.html`: logowanie i rejestracja (e-mail + hasło; nowe konto ma status „czeka”).
+- `t.html?id=…`: pobiera trening z magazynu i wyświetla go w ramce.
+- `admin.html`: panel akceptacji kont (tylko administrator).
+- `auth.js`: wspólny moduł kont; `vendor/supabase.js`: biblioteka supabase-js (UMD); `shell.css`: wygląd.
 
-- `auth.js` to wspólny moduł kont (logowanie e-mail + hasło, postęp i wyniki w bazie). `vendor/supabase.js` to biblioteka supabase-js (UMD).
-- `login.html` to logowanie i rejestracja. Bez konta wszystko działa w trybie gościa (postęp w przeglądarce).
-- Tabele: `profiles`, `attempts` (każde rozwiązane zadanie), `progress` (stan sesji do wznowienia). Reguły RLS: każdy widzi tylko swoje dane.
-- W nowym treningu dołącz `../vendor/supabase.js` i `../auth.js`, a potem używaj `KT.ready`, `KT.saveAttempt`, `KT.saveProgress`, `KT.loadProgress`, `KT.attempts`, `KT.renderBar`.
-
-## Dodanie nowego treningu
-
-1. Utwórz folder `nazwa-treningu/` i wrzuć do niego `index.html`.
-2. Dopisz wpis na początku tablicy `TRAININGS` w głównym `index.html`.
-3. Commit i push na `main`.
-
-Treści są pomocą do nauki i nie zastępują podręcznika ani zajęć.
+Źródła treningów i skrypty SQL są w prywatnym repozytorium `TOSCA3/kon-treningi-tresci`.

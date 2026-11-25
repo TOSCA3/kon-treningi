@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Trening</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shell.css">
+<style>
+html,body{height:100%}
+#frame{position:fixed;inset:0;width:100%;height:100%;border:0;display:block;background:var(--bg)}
+</style>
+</head>
+<body>
+<main class="wrap" id="msg"><p class="mute">Wczytuję trening…</p></main>
+<script src="vendor/supabase.js"></script>
+<script src="auth.js"></script>
+<script>
+// Przeglądarka treningu: pobiera HTML z prywatnego magazynu (tylko dla zaakceptowanych kont)
+// i wyświetla go w ramce z tej samej domeny (działa logowanie i zapis postępu).
+(async () => {
+  const msg = h => { document.getElementById('msg').innerHTML = h; };
+  if (!(await KT.guard())) return;
+  const id = new URLSearchParams(location.search).get('id') || '';
+  const html = await KT.training(id);
+  if (!html) { msg('<div class="box bad">Nie udało się wczytać treningu. <a class="kt-link" href="./">Wróć do spisu</a></div>'); return; }
+  const m = html.match(/<title>([^<]*)<\/title>/i); if (m) document.title = m[1];
+  const f = document.createElement('iframe');
+  f.id = 'frame'; f.title = document.title; f.srcdoc = html;
+  document.getElementById('msg').remove();
+  document.body.appendChild(f);
+})();
+</script>
+</body>
+</html>

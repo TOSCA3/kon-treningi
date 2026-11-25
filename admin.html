@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Panel akceptacji kont</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shell.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="kt-bar" id="ktBar"></div>
+  <h1>Panel akceptacji kont</h1>
+  <p class="lead">Nowe konta czekają tutaj na Twoją decyzję. Zaakceptowane osoby widzą treningi, odrzucone i oczekujące nie mają dostępu do żadnej treści. Decyzję możesz w każdej chwili zmienić.</p>
+  <div id="out"><p class="mute">Wczytuję…</p></div>
+</main>
+<script src="vendor/supabase.js"></script>
+<script src="auth.js"></script>
+<script>
+(async () => {
+  const $ = id => document.getElementById(id), esc = KT.esc;
+  KT.renderBar($('ktBar'));
+  if (!(await KT.guard({ needApproved: true, needAdmin: true }))) return;
+  const LABEL = { pending: 'czeka', approved: 'zaakceptowane', rejected: 'odrzucone' };
+  const fmt = d => d ? new Date(d).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }) : '';
+  async function load() {
+    const { data, error } = await KT.sb.from('members').select('user_id,email,display_name,status,is_admin,created_at,decided_at').order('created_at', { ascending: false });
+    if (error) { $('out').innerHTML = `<div class="box bad">Błąd: ${esc(error.message)}</div>`; return; }
+    const order = { pending: 0, approved: 1, rejected: 2 };
+    data.sort((a, b) => order[a.status] - order[b.status] || (a.created_at < b.created_at ? 1 : -1));
+    const pend = data.filter(m => m.status === 'pending').length;
+    $('out').innerHTML = `<p><b>${pend}</b> ${pend === 1 ? 'konto czeka' : 'kont czeka'} na akceptację · wszystkich kont: ${data.length}</p>
+      <table><thead><tr><th>Osoba</th><th class="hide-sm">Założone</th><th>Status</th><th>Decyzja</th></tr></thead><tbody>` +
+      data.map(m => `<tr><td><b>${esc(m.display_name || '(bez imienia)')}</b>${m.is_admin ? ' <span class="pill approved">admin</span>' : ''}<br><span class="mute">${esc(m.email)}</span></td>
+        <td class="hide-sm mute">${fmt(m.created_at)}</td>
+        <td><span class="pill ${m.status}">${LABEL[m.status]}</span></td>
+        <td><div class="acts">${m.user_id === KT.user.id ? '<span class="mute">to Ty</span>' :
+          (m.status !== 'approved' ? `<button class="btn pri" data-id="${m.user_id}" data-s="approved">Akceptuj</button>` : '') +
+          (m.status !== 'rejected' ? `<button class="btn" data-id="${m.user_id}" data-s="rejected">${m.status === 'approved' ? 'Odbierz dostęp' : 'Odrzuć'}</button>` : '')}</div></td></tr>`).join('') +
+      '</tbody></table>';
+  }
+  $('out').addEventListener('click', async e => {
+    const b = e.target.closest('[data-id]'); if (!b) return;
+    b.disabled = true;
+    const { error } = await KT.sb.from('members').update({ status: b.dataset.s, decided_at: new Date().toISOString() }).eq('user_id', b.dataset.id);
+    if (error) { alertBox(error.message); b.disabled = false; return; }
+    load();
+  });
+  const alertBox = t => $('out').insertAdjacentHTML('afterbegin', `<div class="box bad">Nie udało się zapisać: ${esc(t)}</div>`);
+  load();
+})();
+</script>
+</body>
+</html>

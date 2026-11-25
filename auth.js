@@ -1,39 +1,65 @@
-// Wspólny moduł kont (Supabase) dla wszystkich treningów.
-// Wymaga wcześniej załadowanego vendor/supabase.js. Bez niego (albo bez sieci) treningi działają w trybie gościa.
-// Klucz publishable jest jawny z założenia: dostęp do danych pilnują reguły RLS w bazie (każdy widzi tylko swoje wiersze).
+// Wspólny moduł kont (Supabase) dla strony i treningów.
+// Klucz publishable jest jawny z założenia. Dostępu pilnują reguły w bazie:
+// treningi (prywatny bucket „trainings”) może pobrać tylko konto zaakceptowane przez administratora.
 (function () {
   const SB_URL = 'https://bxxjimzwtueqfpmskvat.supabase.co';
   const SB_KEY = 'sb_publishable_HC01A5Z9R2TdDWRByxEXjw_UAweA1Vn';
   const me = document.currentScript ? document.currentScript.src : '';
   const root = me ? new URL('.', me).pathname : '/kon-treningi/';
+  const top = (() => { try { return window.top.location.href && window.top; } catch (e) { return window; } })();
   let sb = null;
   try { if (window.supabase && window.supabase.createClient) sb = window.supabase.createClient(SB_URL, SB_KEY); } catch (e) { console.warn('Supabase niedostępny', e); }
 
-  const KT = { sb, root, user: null, profile: null };
+  const KT = { sb, root, user: null, member: null };
   const warn = r => { if (r && r.error) console.warn(r.error); return r; };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  KT.esc = esc;
 
   KT.ready = (async () => {
     if (!sb) return null;
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return null;
     KT.user = session.user;
-    const { data } = await sb.from('profiles').select('display_name').eq('id', KT.user.id).maybeSingle();
-    const metaName = (KT.user.user_metadata && KT.user.user_metadata.display_name) || '';
-    KT.profile = data || { display_name: metaName || KT.user.email.split('@')[0] };
-    if (!data && metaName) warn(await sb.from('profiles').upsert({ id: KT.user.id, display_name: metaName }));
+    const { data, error } = await sb.from('members').select('status,is_admin,display_name,email').eq('user_id', KT.user.id).maybeSingle();
+    if (error) console.warn(error);
+    KT.member = data || { status: 'pending', is_admin: false, display_name: null };
     return KT.user;
   })().catch(e => { console.warn(e); return null; });
 
-  KT.name = () => (KT.profile && KT.profile.display_name) || '';
-  KT.loginUrl = () => root + 'login.html?next=' + encodeURIComponent(location.pathname + location.search);
-  KT.signOut = async () => { if (sb) await sb.auth.signOut(); location.reload(); };
+  KT.name = () => (KT.member && KT.member.display_name) || (KT.user && KT.user.user_metadata && KT.user.user_metadata.display_name) || (KT.user ? KT.user.email.split('@')[0] : '');
+  KT.approved = () => !!(KT.member && KT.member.status === 'approved');
+  KT.isAdmin = () => !!(KT.member && KT.member.is_admin);
+  KT.loginUrl = () => root + 'login.html?next=' + encodeURIComponent(top.location.pathname + top.location.search);
+  KT.signOut = async () => { if (sb) await sb.auth.signOut(); top.location.href = root + 'login.html'; };
 
-  // Jedna próba = jedno rozwiązane zadanie (score 0–1).
+  // Strona wymagająca konta: bez sesji → logowanie; bez akceptacji → strona główna (tam komunikat).
+  KT.guard = async ({ needApproved = true, needAdmin = false } = {}) => {
+    await KT.ready;
+    if (!sb) return false;
+    if (!KT.user) { top.location.replace(KT.loginUrl()); return false; }
+    if (needAdmin && !KT.isAdmin()) { top.location.replace(root); return false; }
+    if (needApproved && !KT.approved()) { if (top.location.pathname !== root) top.location.replace(root); return false; }
+    return true;
+  };
+
+  // Treści z prywatnego magazynu
+  KT.catalog = async () => {
+    const { data, error } = await sb.storage.from('trainings').download('catalog.json');
+    if (error) { console.warn(error); return null; }
+    return JSON.parse(await data.text());
+  };
+  KT.training = async id => {
+    if (!/^[a-z0-9-]+$/.test(id)) return null;
+    const { data, error } = await sb.storage.from('trainings').download(id + '/index.html');
+    if (error) { console.warn(error); return null; }
+    return await data.text();
+  };
+
+  // Wyniki i postęp
   KT.saveAttempt = (training, task_id, score, gave_up) => {
-    if (!KT.user) return Promise.resolve();
+    if (!KT.user || !KT.approved()) return Promise.resolve();
     return sb.from('attempts').insert({ training, task_id, score: Math.max(0, Math.min(1, score)), gave_up: !!gave_up }).then(warn);
   };
-  // Wszystkie próby użytkownika w danym treningu (do statystyk i „zadań do poprawy”).
   KT.attempts = async training => {
     if (!KT.user) return [];
     let q = sb.from('attempts').select('training,task_id,score,gave_up,created_at').order('created_at', { ascending: true }).limit(5000);
@@ -41,13 +67,10 @@
     const { data, error } = await q; if (error) { console.warn(error); return []; }
     return data || [];
   };
-  // Ostatni wynik każdego zadania → zadania, których ostatnia próba nie była na 100%.
   KT.toReview = rows => { const last = {}; rows.forEach(r => { last[r.task_id] = r.score; }); return Object.keys(last).filter(k => last[k] < 0.999).map(Number); };
-
-  // Stan sesji (do wznawiania na innym urządzeniu); zapis z opóźnieniem, żeby nie słać przy każdym kliknięciu.
   let timer = null;
   KT.saveProgress = (training, state) => {
-    if (!KT.user) return;
+    if (!KT.user || !KT.approved()) return;
     clearTimeout(timer);
     timer = setTimeout(() => sb.from('progress').upsert({ user_id: KT.user.id, training, state, updated_at: new Date().toISOString() }).then(warn), 800);
   };
@@ -58,15 +81,15 @@
     return data;
   };
 
-  // Mały pasek konta: „Zalogowany jako X · Wyloguj” albo „Zaloguj się”.
+  // Pasek konta
   KT.renderBar = async el => {
     if (!el) return;
     await KT.ready;
-    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    if (!sb) { el.innerHTML = '<span class="kt-mute">Konta są chwilowo niedostępne. Grasz jako gość.</span>'; return; }
-    el.innerHTML = KT.user
-      ? `<span>Zalogowany jako <b>${esc(KT.name())}</b></span><button type="button" class="kt-link" data-kt-out>Wyloguj</button>`
-      : `<span class="kt-mute">Grasz jako gość: postęp zapisuje się tylko w tej przeglądarce.</span><a class="kt-link" href="${esc(KT.loginUrl())}">Zaloguj się</a>`;
+    if (!sb) { el.innerHTML = '<span class="kt-mute">Serwer kont jest chwilowo niedostępny.</span>'; return; }
+    if (!KT.user) { el.innerHTML = `<a class="kt-link" href="${esc(KT.loginUrl())}" target="_top">Zaloguj się</a>`; return; }
+    el.innerHTML = `<a class="kt-link" href="${esc(root)}" target="_top">Spis treningów</a>` +
+      (KT.isAdmin() ? `<a class="kt-link" href="${esc(root)}admin.html" target="_top">Panel akceptacji</a>` : '') +
+      `<span>Zalogowany jako <b>${esc(KT.name())}</b></span><button type="button" class="kt-link" data-kt-out>Wyloguj</button>`;
     const out = el.querySelector('[data-kt-out]'); if (out) out.onclick = KT.signOut;
   };
 
